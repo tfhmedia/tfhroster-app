@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Roster Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Style for the dialog backdrop */
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
+
+        /* --- New styles for interactivity --- */
+        .roster-cell:focus {
+            outline: 2px solid #3b82f6; /* blue-500 */
+            outline-offset: -1px;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+            border-radius: 6px;
+        }
+
+        /* Drag-and-drop styles */
+        .dragging {
+            opacity: 0.5;
+            background: #e0e7ff; /* indigo-100 */
+        }
+        .drag-over {
+            background-color: #dbeafe !important; /* blue-100 */
+            border: 2px dashed #60a5fa; /* blue-400 */
+        }
+        
+        /* Toggle switch */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #2563eb;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #2563eb;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div id="app" class="p-4 md:p-8 max-w-7xl mx-auto">
+        <!-- Header Section -->
+        <header class="flex flex-wrap justify-between items-center gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-slate-900">Interactive Roster Generator</h1>
+                <p class="text-slate-500 mt-1">Drag, drop, and edit your team roster with ease.</p>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                 <button id="undo-button" class="px-3 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" title="Undo (Ctrl+Z)" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l-3 2.7"/></svg>
+                    Undo
+                </button>
+                 <button id="redo-button" class="px-3 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" title="Redo (Ctrl+Y)" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17v-6h6"/><path d="M21 7a9 9 0 0 1-9 9 9 9 0 0 1-6-2.3l3-2.7"/></svg>
+                    Redo
+                </button>
+                <button id="team-modal-button" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Team
+                </button>
+                <button id="download-pdf-button" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    PDF
+                </button>
+                <button id="generate-roster-button" class="px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm text-sm font-semibold hover:bg-green-700 transition-colors flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 2 2.1 2.1"/><path d="M11.5 9.5 14 12l6-6"/><path d="m2 2 7.586 7.586"/><path d="M11.5 9.5 7.586 5.586"/></svg>
+                    Generate
+                </button>
+                 <button id="clear-roster-button" class="px-4 py-2 bg-red-500 text-white rounded-lg shadow-sm text-sm font-semibold hover:bg-red-600 transition-colors flex items-center gap-2" title="Clear Roster Assignments">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    Clear
+                </button>
+            </div>
+        </header>
+
+        <!-- Control Panels Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <!-- Main Controls -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                 <h3 class="font-semibold flex items-center gap-2">
+                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+                    Roster Controls
+                 </h3>
+                <form id="add-role-form" class="flex gap-2">
+                    <input type="text" id="role-name-input" placeholder="Add a new role..." class="flex-grow w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="submit" class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors aspect-square flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                </form>
+                <div class="flex items-center justify-between pt-2">
+                    <label for="allow-duplicates-toggle" class="text-sm font-medium text-slate-700">Allow duplicate names per day</label>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="toggle" id="allow-duplicates-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <label for="allow-duplicates-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                    </div>
+                </div>
+            </div>
+            <!-- Add Date Panel -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <h3 class="font-semibold mb-2 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                     Add Date / Event
+                </h3>
+                <form id="add-date-form" class="flex flex-col sm:flex-row gap-2">
+                    <input type="date" id="date-input" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <input type="text" id="event-name-input" placeholder="Event name (e.g., Sunday Service)" class="flex-grow w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="submit" class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors aspect-square flex items-center justify-center">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Roster Table Section -->
+        <main class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+            <div id="roster-table-container" class="min-w-[700px]">
+                <!-- Table will be dynamically generated here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Team Members Management Modal -->
+    <dialog id="team-modal" class="p-0 bg-slate-50 rounded-xl shadow-2xl max-w-3xl w-[95%] backdrop:bg-black/40">
+        <div class="p-6 relative">
+            <button id="close-modal-button" class="absolute top-4 right-4 text-slate-500 hover:text-slate-800">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+            <h2 class="text-2xl font-bold text-slate-900">Team Members Management</h2>
+            <p class="text-slate-500 mt-1">Manage members and their roles for automatic roster generation.</p>
+
+            <!-- Notification Area -->
+            <div id="notification-area" class="fixed top-5 right-5 z-50"></div>
+
+            <!-- Manage Roles Section -->
+            <div class="bg-white p-4 rounded-lg border border-slate-200 mt-6">
+                <h3 class="font-semibold mb-3">Manage Roles</h3>
+                <form id="modal-add-role-form" class="flex gap-2 mb-3">
+                    <input type="text" id="modal-role-name-input" placeholder="Add a new role..." class="flex-grow w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="submit" class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors aspect-square flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                </form>
+                <div id="modal-roles-list" class="space-y-2 max-h-32 overflow-y-auto pr-2">
+                    <!-- Roles will be dynamically inserted here -->
+                </div>
+            </div>
+
+             <!-- Import from CSV Section -->
+            <div class="bg-white p-4 rounded-lg border border-slate-200 mt-4">
+                <h3 class="font-semibold mb-3 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-600"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Import Team Members from CSV
+                </h3>
+                <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                    <div>
+                        <button id="download-template-button" class="px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-200 transition-colors flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Download Template
+                        </button>
+                        <p class="text-xs text-slate-500 mt-1">Use this template for correct formatting.</p>
+                    </div>
+                    <div class="flex-grow">
+                         <label for="csv-file-input" class="block text-sm font-medium text-slate-700 mb-1">Upload CSV File</label>
+                        <input type="file" id="csv-file-input" accept=".csv" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                        <p class="text-xs text-slate-500 mt-1">Format: name,roles (separated by ;),availability,notes</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-lg border border-slate-200 mt-4">
+                <h3 class="font-semibold mb-3">Add / Edit Team Member</h3>
+                <form id="add-member-form">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="mb-3 md:col-span-2">
+                            <label for="member-name" class="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                            <input type="text" id="member-name" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                        <div class="mb-3 md:col-span-2">
+                            <label class="block text-sm font-medium text-slate-700 mb-2">Roles</label>
+                            <div id="roles-checkboxes" class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                                <!-- Role checkboxes will be populated here -->
+                                 <p class="text-slate-500 col-span-full">No roles defined. Add roles in the main screen first.</p>
+                            </div>
+                        </div>
+                         <div class="mb-3">
+                            <label for="member-availability" class="block text-sm font-medium text-slate-700 mb-1">Availability</label>
+                            <input type="text" id="member-availability" placeholder="e.g., Weekends only" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="mb-3">
+                            <label for="member-notes" class="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                             <input type="text" id="member-notes" placeholder="e.g., Great eye for shots" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 mt-4">
+                        <button type="button" id="cancel-edit-button" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors hidden">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm text-sm font-semibold hover:bg-blue-700 transition-colors">Add Member</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="mt-8">
+                 <div class="flex justify-between items-center mb-3">
+                    <h3 class="font-semibold text-slate-900" id="team-members-heading">Team Members (0)</h3>
+                    <button id="clear-all-members-button" class="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-semibold hover:bg-red-200 transition-colors">Clear All</button>
+                 </div>
+                 <div id="team-members-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[40vh] overflow-y-auto pr-2">
+                    <!-- Team members list will be populated here -->
+                    <p id="no-members-message" class="text-slate-500 col-span-full">No team members added yet.</p>
+                 </div>
+            </div>
+        </div>
+    </dialog>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const addRoleForm = document.getElementById('add-role-form');
+            const roleNameInput = document.getElementById('role-name-input');
+            const addDateForm = document.getElementById('add-date-form');
+            const dateInput = document.getElementById('date-input');
+            const eventNameInput = document.getElementById('event-name-input');
+            const rosterTableContainer = document.getElementById('roster-table-container');
+            const teamModal = document.getElementById('team-modal');
+            const teamModalButton = document.getElementById('team-modal-button');
+            const closeModalButton = document.getElementById('close-modal-button');
+            const addMemberForm = document.getElementById('add-member-form');
+            const memberNameInput = document.getElementById('member-name');
+            const memberAvailabilityInput = document.getElementById('member-availability');
+            const memberNotesInput = document.getElementById('member-notes');
+            const rolesCheckboxesContainer = document.getElementById('roles-checkboxes');
+            const teamMembersList = document.getElementById('team-members-list');
+            const teamMembersHeading = document.getElementById('team-members-heading');
+            const noMembersMessage = document.getElementById('no-members-message');
+            const generateRosterButton = document.getElementById('generate-roster-button');
+            const clearRosterButton = document.getElementById('clear-roster-button');
+            const cancelEditButton = document.getElementById('cancel-edit-button');
+            const downloadTemplateButton = document.getElementById('download-template-button');
+            const csvFileInput = document.getElementById('csv-file-input');
+            const notificationArea = document.getElementById('notification-area');
+            const clearAllMembersButton = document.getElementById('clear-all-members-button');
+            const downloadPdfButton = document.getElementById('download-pdf-button');
+            const allowDuplicatesToggle = document.getElementById('allow-duplicates-toggle');
+            const undoButton = document.getElementById('undo-button');
+            const redoButton = document.getElementById('redo-button');
+            
+            // Modal Role Elements
+            const modalAddRoleForm = document.getElementById('modal-add-role-form');
+            const modalRoleNameInput = document.getElementById('modal-role-name-input');
+            const modalRolesList = document.getElementById('modal-roles-list');
+
+            // --- STATE MANAGEMENT ---
+            let state = {};
+            let history = [];
+            let historyIndex = -1;
+            const MAX_HISTORY = 20;
+
+            const updateState = (newState) => {
+                state = newState;
+                renderAll();
+                saveState();
+            }
+
+            const recordHistory = () => {
+                // When a change is made, clear any 'redo' history
+                if (historyIndex < history.length - 1) {
+                    history = history.slice(0, historyIndex + 1);
+                }
+                
+                // Push a deep copy of the current roster state
+                history.push(JSON.parse(JSON.stringify(state.roster)));
+
+                // Limit history size
+                if (history.length > MAX_HISTORY) {
+                    history.shift();
+                }
+
+                historyIndex = history.length - 1;
+                updateUndoRedoButtons();
+            };
+            
+            const undo = () => {
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    state.roster = JSON.parse(JSON.stringify(history[historyIndex]));
+                    renderAll();
+                    saveState();
+                    updateUndoRedoButtons();
+                }
+            };
+
+            const redo = () => {
+                if (historyIndex < history.length - 1) {
+                    historyIndex++;
+                    state.roster = JSON.parse(JSON.stringify(history[historyIndex]));
+                    renderAll();
+                    saveState();
+                    updateUndoRedoButtons();
+                }
+            };
+            
+            const updateUndoRedoButtons = () => {
+                undoButton.disabled = historyIndex <= 0;
+                redoButton.disabled = historyIndex >= history.length - 1;
+            };
+
+            // --- LOCAL STORAGE ---
+            const saveState = () => {
+                localStorage.setItem('rosterAppState', JSON.stringify(state));
+            };
+
+            const loadState = () => {
+                const savedState = localStorage.getItem('rosterAppState');
+                if (savedState) {
+                    state = JSON.parse(savedState);
+                } else {
+                    // Default state if nothing is saved
+                    state = {
+                        roles: ['Main Camera', 'Second Camera', 'ProPresenter', 'Live Monitoring', 'Camera Switch', 'Photography', 'Reels'],
+                        dates: [],
+                        teamMembers: [],
+                        roster: {},
+                        editingMemberId: null,
+                        settings: {
+                            allowDuplicates: false
+                        }
+                    };
+                }
+                 // Initialize history with the loaded state
+                history = [JSON.parse(JSON.stringify(state.roster))];
+                historyIndex = 0;
+            };
+            
+            // --- UTILITY FUNCTIONS ---
+            const showNotification = (message, isError = false) => {
+                const notification = document.createElement('div');
+                notification.textContent = message;
+                notification.className = `px-4 py-2 rounded-lg shadow-md text-white ${isError ? 'bg-red-500' : 'bg-green-500'}`;
+                notificationArea.appendChild(notification);
+
+                setTimeout(() => {
+                    notification.style.transition = 'opacity 0.5s ease';
+                    notification.style.opacity = '0';
+                    setTimeout(() => notification.remove(), 500);
+                }, 3000);
+            };
+
+             const isDuplicateInDate = (name, date) => {
+                if (state.settings.allowDuplicates || !name) return false;
+                const assignmentsOnDate = state.roster[date] || {};
+                return Object.values(assignmentsOnDate).includes(name);
+            };
+
+            // --- RENDERING FUNCTIONS ---
+            const renderAll = () => {
+                renderRosterTable();
+                renderRolesCheckboxes();
+                renderTeamMembers();
+                updateTeamMembersHeading();
+                renderModalRolesList();
+                allowDuplicatesToggle.checked = state.settings.allowDuplicates;
+            };
+
+            const renderRosterTable = () => {
+                let tableHTML = `
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 sticky top-0 z-10">
+                            <tr>
+                                <th class="p-3 font-semibold text-slate-600 w-1/4">Roles</th>
+                `;
+                state.dates.forEach(d => {
+                    const dateObj = new Date(d.date + 'T00:00:00');
+                    const day = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+                    const dateStr = dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+                    tableHTML += `
+                        <th class="p-3 font-semibold text-slate-900 border-l border-slate-200 relative group" data-date-header="${d.date}">
+                             <div class="cursor-pointer" title="Double-click to edit">
+                                <div>${day} ${dateStr}</div>
+                                <div class="font-normal text-slate-500">${d.event}</div>
+                            </div>
+                            <button data-delete-date="${d.date}" class="absolute top-1 right-1 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete this column">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </th>`;
+                });
+                tableHTML += '</tr></thead><tbody>';
+
+                state.roles.forEach(role => {
+                    tableHTML += '<tr class="border-t border-slate-200">';
+                    tableHTML += `<td class="p-3 font-medium text-slate-700 relative group">${role} <button data-role-to-delete="${role}" class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete this role">&times;</button></td>`;
+                    state.dates.forEach(d => {
+                         const assignedMember = state.roster[d.date]?.[role] || '';
+                         tableHTML += `<td class="p-1 border-l border-slate-200">
+                            <div class="roster-cell w-full px-2 py-3 rounded-md cursor-pointer ${assignedMember ? 'bg-blue-100 text-blue-800 font-medium' : 'text-slate-400' }"
+                                 tabindex="0" 
+                                 draggable="true"
+                                 data-date="${d.date}"
+                                 data-role="${role}">
+                                ${assignedMember || ''}
+                            </div>
+                         </td>`;
+                    });
+                    tableHTML += '</tr>';
+                });
+                tableHTML += '</tbody></table>';
+                
+                if (state.roles.length === 0 || state.dates.length === 0) {
+                     rosterTableContainer.innerHTML = `<div class="p-8 text-center text-slate-500">
+                        <p>Your roster will appear here.</p>
+                        <p>Start by adding roles and dates above.</p>
+                     </div>`;
+                } else {
+                    rosterTableContainer.innerHTML = tableHTML;
+                }
+            };
+
+            const renderModalRolesList = () => {
+                if (state.roles.length === 0) {
+                    modalRolesList.innerHTML = `<p class="text-sm text-slate-500">No roles added yet.</p>`;
+                    return;
+                }
+                modalRolesList.innerHTML = state.roles.map(role => `
+                    <div class="flex justify-between items-center bg-slate-100 p-2 rounded-md text-sm">
+                        <span class="font-medium text-slate-700">${role}</span>
+                        <div class="flex gap-2">
+                            <button data-edit-role="${role}" class="text-slate-500 hover:text-blue-600">
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                            </button>
+                             <button data-delete-modal-role="${role}" class="text-slate-500 hover:text-red-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            };
+            
+            const renderRolesCheckboxes = () => {
+                if (state.roles.length === 0) {
+                     rolesCheckboxesContainer.innerHTML = `<p class="text-slate-500 col-span-full">No roles defined. Add roles first.</p>`;
+                     return;
+                }
+                rolesCheckboxesContainer.innerHTML = state.roles.map(role => `
+                    <label class="flex items-center gap-2 p-2 rounded-md hover:bg-slate-100 cursor-pointer">
+                        <input type="checkbox" name="roles" value="${role}" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span>${role}</span>
+                    </label>
+                `).join('');
+            };
+            
+            const renderTeamMembers = () => {
+                if(state.teamMembers.length === 0) {
+                    noMembersMessage.classList.remove('hidden');
+                    teamMembersList.innerHTML = '';
+                } else {
+                    noMembersMessage.classList.add('hidden');
+                    teamMembersList.innerHTML = state.teamMembers.map(member => `
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <div class="flex justify-between items-start">
+                                <h4 class="font-semibold text-slate-800">${member.name}</h4>
+                                <div class="flex gap-2">
+                                    <button data-edit-id="${member.id}" class="text-slate-500 hover:text-blue-600">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                                    </button>
+                                    <button data-delete-id="${member.id}" class="text-slate-500 hover:text-red-600">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mt-2 flex flex-wrap gap-1">
+                                ${member.roles.map(role => `<span class="text-xs font-medium bg-slate-200 text-slate-600 px-2 py-1 rounded-full">${role}</span>`).join('') || '<span class="text-xs text-slate-400">No roles assigned</span>'}
+                            </div>
+                            <div class="mt-2 space-y-1 text-sm text-slate-600">
+                                <p><strong class="font-medium">Availability:</strong> ${member.availability || 'Not set'}</p>
+                                <p class="italic">"${member.notes || 'No notes'}"</p>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                updateTeamMembersHeading();
+            };
+
+            const updateTeamMembersHeading = () => {
+                 teamMembersHeading.textContent = `Team Members (${state.teamMembers.length})`;
+            };
+
+            // --- EVENT HANDLERS (GENERAL) ---
+            addRoleForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const roleName = roleNameInput.value.trim();
+                if (roleName && !state.roles.includes(roleName)) {
+                    state.roles.push(roleName);
+                    roleNameInput.value = '';
+                    recordHistory();
+                    saveState();
+                    renderAll();
+                }
+            });
+
+            addDateForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const date = dateInput.value;
+                const eventName = eventNameInput.value.trim() || 'Event';
+                if (date && !state.dates.some(d => d.date === date)) {
+                    state.dates.push({ date, event: eventName });
+                    state.dates.sort((a, b) => new Date(a.date) - new Date(b.date));
+                    eventNameInput.value = '';
+                    recordHistory();
+                    saveState();
+                    renderAll();
+                }
+            });
+            
+            generateRosterButton.addEventListener('click', () => {
+                recordHistory();
+                state.roster = {}; // Reset roster
+                state.dates.forEach(d => {
+                    state.roster[d.date] = {};
+                    const assignedToday = new Set();
+                    const rolesWithMemberCounts = state.roles.map(role => ({
+                        role,
+                        count: state.teamMembers.filter(member => member.roles.includes(role)).length
+                    }));
+                    const prioritizedRoles = rolesWithMemberCounts.sort((a, b) => a.count - b.count).map(item => item.role);
+
+                    prioritizedRoles.forEach(role => {
+                        const availableMembers = state.teamMembers.filter(
+                            member => member.roles.includes(role) && (state.settings.allowDuplicates || !assignedToday.has(member.id))
+                        );
+                        if (availableMembers.length > 0) {
+                            const chosenMember = availableMembers[Math.floor(Math.random() * availableMembers.length)];
+                            state.roster[d.date][role] = chosenMember.name;
+                            if (!state.settings.allowDuplicates) {
+                                assignedToday.add(chosenMember.id);
+                            }
+                        } else {
+                            state.roster[d.date][role] = '';
+                        }
+                    });
+                });
+                saveState();
+                renderRosterTable();
+            });
+
+            clearRosterButton.addEventListener('click', () => {
+                recordHistory();
+                state.roster = {};
+                saveState();
+                renderRosterTable();
+            });
+
+            allowDuplicatesToggle.addEventListener('change', () => {
+                state.settings.allowDuplicates = allowDuplicatesToggle.checked;
+                saveState();
+            });
+
+            undoButton.addEventListener('click', undo);
+            redoButton.addEventListener('click', redo);
+            document.addEventListener('keydown', e => {
+                if (e.ctrlKey && e.key === 'z') {
+                    e.preventDefault();
+                    undo();
+                }
+                if (e.ctrlKey && e.key === 'y') {
+                    e.preventDefault();
+                    redo();
+                }
+            });
+
+
+            // --- ROSTER TABLE INTERACTIVITY ---
+            const makeHeaderEditable = (th) => {
+                if (th.querySelector('input')) return; // Already editing
+
+                const oldDateStr = th.dataset.dateHeader;
+                const dateObj = state.dates.find(d => d.date === oldDateStr);
+                if (!dateObj) return;
+
+                const originalContent = th.innerHTML;
+
+                th.innerHTML = `
+                    <div class="p-1 space-y-1">
+                        <input type="date" value="${dateObj.date}" class="w-full text-sm p-1 border rounded border-slate-300">
+                        <input type="text" value="${dateObj.event}" class="w-full text-sm p-1 border rounded border-slate-300" placeholder="Event Name">
+                    </div>`;
+
+                const dateInput = th.querySelector('input[type="date"]');
+                const eventInput = th.querySelector('input[type="text"]');
+                dateInput.focus();
+
+                const finishOnce = (() => {
+                    let hasFinished = false;
+                    return () => {
+                        if (hasFinished) return;
+                        hasFinished = true;
+
+                        const newDate = dateInput.value;
+                        const newEvent = eventInput.value.trim() || 'Event';
+
+                        if (!newDate) { // Date cannot be empty
+                            th.innerHTML = originalContent;
+                            return;
+                        }
+
+                        // Check if new date (if changed) already exists
+                        if (newDate !== oldDateStr && state.dates.some(d => d.date === newDate)) {
+                            showNotification(`Date ${newDate} already exists.`, true);
+                            th.innerHTML = originalContent;
+                            return;
+                        }
+                        
+                        recordHistory();
+
+                        // Find original object to update
+                        const originalDateObj = state.dates.find(d => d.date === oldDateStr);
+                        if (originalDateObj) {
+                            originalDateObj.event = newEvent;
+                            originalDateObj.date = newDate;
+
+                             // If date changed, update the roster key
+                            if (newDate !== oldDateStr) {
+                                state.roster[newDate] = state.roster[oldDateStr];
+                                delete state.roster[oldDateStr];
+                            }
+                        }
+                       
+                        state.dates.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                        saveState();
+                        renderRosterTable();
+                    };
+                })();
+                
+                const revert = () => {
+                    th.innerHTML = originalContent;
+                };
+
+                th.querySelectorAll('input').forEach(input => {
+                    input.addEventListener('blur', finishOnce);
+                    input.addEventListener('keydown', e => {
+                        if (e.key === 'Enter') finishOnce();
+                        if (e.key === 'Escape') revert();
+                    });
+                });
+            };
+
+            const makeCellEditable = (cell) => {
+                if (cell.querySelector('input')) return; // Already editing
+                const originalValue = cell.textContent.trim();
+                cell.innerHTML = `<input type="text" class="w-full h-full bg-white border-2 border-blue-500 rounded-md px-2 py-1.5 text-sm" value="${originalValue}">`;
+                const input = cell.querySelector('input');
+                input.focus();
+                input.select();
+
+                const finishEditing = () => {
+                    const newValue = input.value.trim();
+                    const { date, role } = cell.dataset;
+
+                    // Validation check
+                    const currentAssignee = state.roster[date]?.[role] || '';
+                    if (newValue !== currentAssignee && isDuplicateInDate(newValue, date)) {
+                        showNotification(`${newValue} is already assigned on this day.`, true);
+                        cell.innerHTML = originalValue; // Revert
+                    } else {
+                        recordHistory();
+                        if (!state.roster[date]) state.roster[date] = {};
+                        state.roster[date][role] = newValue;
+                        saveState();
+                        renderRosterTable();
+                        // Find and focus the cell again after re-render
+                        setTimeout(() => {
+                           const newCell = rosterTableContainer.querySelector(`[data-date="${date}"][data-role="${role}"]`);
+                           if(newCell) newCell.focus();
+                        }, 0);
+                    }
+                };
+                
+                input.addEventListener('blur', finishEditing);
+                input.addEventListener('keydown', e => {
+                    if (e.key === 'Enter') {
+                        finishEditing();
+                    } else if (e.key === 'Escape') {
+                        cell.innerHTML = originalValue; // Revert
+                        cell.focus();
+                    }
+                });
+            };
+
+            rosterTableContainer.addEventListener('click', e => {
+                const roleDeleteBtn = e.target.closest('[data-role-to-delete]');
+                if (roleDeleteBtn) {
+                    deleteRole(roleDeleteBtn.dataset.roleToDelete);
+                    return;
+                }
+                
+                const dateDeleteBtn = e.target.closest('[data-delete-date]');
+                if(dateDeleteBtn) {
+                    const dateToDelete = dateDeleteBtn.dataset.deleteDate;
+                    recordHistory();
+                    state.dates = state.dates.filter(d => d.date !== dateToDelete);
+                    delete state.roster[dateToDelete];
+                    saveState();
+                    renderAll();
+                    return;
+                }
+
+                const cell = e.target.closest('.roster-cell');
+                if (cell) {
+                    makeCellEditable(cell);
+                }
+            });
+
+            rosterTableContainer.addEventListener('dblclick', e => {
+                const header = e.target.closest('[data-date-header]');
+                if (header) {
+                    makeHeaderEditable(header);
+                }
+            });
+
+            rosterTableContainer.addEventListener('keydown', e => {
+                const activeCell = document.activeElement;
+                if (!activeCell.classList.contains('roster-cell')) return;
+
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    makeCellEditable(activeCell);
+                    return;
+                }
+
+                const allCells = Array.from(rosterTableContainer.querySelectorAll('.roster-cell'));
+                const currentIndex = allCells.indexOf(activeCell);
+                const numCols = state.dates.length;
+
+                let nextIndex = -1;
+                switch(e.key) {
+                    case 'ArrowUp': nextIndex = currentIndex - numCols; break;
+                    case 'ArrowDown': nextIndex = currentIndex + numCols; break;
+                    case 'ArrowLeft': nextIndex = currentIndex - 1; break;
+                    case 'ArrowRight': nextIndex = currentIndex + 1; break;
+                }
+
+                if (nextIndex >= 0 && nextIndex < allCells.length) {
+                    e.preventDefault();
+                    allCells[nextIndex].focus();
+                }
+            });
+
+            // Drag and Drop (Mouse & Touch)
+            let draggedItem = null;
+            
+            rosterTableContainer.addEventListener('dragstart', e => {
+                draggedItem = e.target;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', draggedItem.innerHTML);
+                setTimeout(() => draggedItem.classList.add('dragging'), 0);
+            });
+
+             rosterTableContainer.addEventListener('dragend', e => {
+                draggedItem.classList.remove('dragging');
+            });
+
+            rosterTableContainer.addEventListener('dragover', e => {
+                e.preventDefault();
+                const target = e.target.closest('.roster-cell');
+                if (target && target !== draggedItem) {
+                    // Simple visual feedback is enough; complex class adding can be slow
+                }
+            });
+
+            rosterTableContainer.addEventListener('drop', e => {
+                e.preventDefault();
+                const target = e.target.closest('.roster-cell');
+                if (target && target !== draggedItem) {
+                    const sourceDate = draggedItem.dataset.date;
+                    const sourceRole = draggedItem.dataset.role;
+                    const targetDate = target.dataset.date;
+                    const targetRole = target.dataset.role;
+
+                    const sourceName = state.roster[sourceDate]?.[sourceRole] || '';
+                    const targetName = state.roster[targetDate]?.[targetRole] || '';
+
+                    // Validation for source dropping into target's date
+                    if (sourceDate !== targetDate && isDuplicateInDate(sourceName, targetDate)) {
+                        showNotification(`${sourceName} is already assigned on ${targetDate}.`, true);
+                        return;
+                    }
+                    // Validation for target swapping into source's date
+                     if (sourceDate !== targetDate && isDuplicateInDate(targetName, sourceDate)) {
+                        showNotification(`${targetName} is already assigned on ${sourceDate}.`, true);
+                        return;
+                    }
+                    
+                    recordHistory();
+                    if (!state.roster[sourceDate]) state.roster[sourceDate] = {};
+                    state.roster[sourceDate][sourceRole] = targetName;
+                    
+                    if (!state.roster[targetDate]) state.roster[targetDate] = {};
+                    state.roster[targetDate][targetRole] = sourceName;
+                    
+                    saveState();
+                    renderRosterTable();
+                }
+            });
+            
+            // --- TEAM MODAL MANAGEMENT ---
+            addMemberForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = memberNameInput.value.trim();
+                const availability = memberAvailabilityInput.value.trim();
+                const notes = memberNotesInput.value.trim();
+                const selectedRoles = Array.from(document.querySelectorAll('input[name="roles"]:checked')).map(cb => cb.value);
+
+                if(name) {
+                    if (state.editingMemberId) {
+                        const member = state.teamMembers.find(m => m.id === state.editingMemberId);
+                        if (member) {
+                            member.name = name;
+                            member.roles = selectedRoles;
+                            member.availability = availability;
+                            member.notes = notes;
+                        }
+                    } else {
+                        state.teamMembers.push({ id: Date.now(), name, roles: selectedRoles, availability, notes });
+                    }
+                    resetMemberForm();
+                    saveState();
+                    renderTeamMembers();
+                }
+            });
+
+            teamMembersList.addEventListener('click', (e) => {
+                const editButton = e.target.closest('[data-edit-id]');
+                const deleteButton = e.target.closest('[data-delete-id]');
+
+                if (editButton) {
+                    const memberId = parseFloat(editButton.dataset.editId);
+                    const member = state.teamMembers.find(m => m.id === memberId);
+                    if (member) {
+                        state.editingMemberId = memberId;
+                        memberNameInput.value = member.name;
+                        memberAvailabilityInput.value = member.availability || '';
+                        memberNotesInput.value = member.notes || '';
+                        document.querySelectorAll('input[name="roles"]').forEach(cb => {
+                            cb.checked = member.roles.includes(cb.value);
+                        });
+                        addMemberForm.querySelector('button[type="submit"]').textContent = 'Update Member';
+                        cancelEditButton.classList.remove('hidden');
+                        memberNameInput.focus();
+                    }
+                }
+
+                if (deleteButton) {
+                    const memberId = parseFloat(deleteButton.dataset.deleteId);
+                    state.teamMembers = state.teamMembers.filter(m => m.id !== memberId);
+                    saveState();
+                    renderTeamMembers();
+                }
+            });
+
+            cancelEditButton.addEventListener('click', resetMemberForm);
+
+            clearAllMembersButton.addEventListener('click', () => {
+                if (clearAllMembersButton.textContent === 'Are you sure?') {
+                    state.teamMembers = [];
+                    saveState();
+                    renderTeamMembers();
+                    clearAllMembersButton.textContent = 'Clear All';
+                    clearAllMembersButton.classList.remove('bg-red-500', 'text-white');
+                    clearAllMembersButton.classList.add('bg-red-100', 'text-red-700');
+                } else {
+                    clearAllMembersButton.textContent = 'Are you sure?';
+                    clearAllMembersButton.classList.remove('bg-red-100', 'text-red-700');
+                    clearAllMembersButton.classList.add('bg-red-500', 'text-white');
+                    setTimeout(() => {
+                        if (clearAllMembersButton.textContent === 'Are you sure?') {
+                             clearAllMembersButton.textContent = 'Clear All';
+                             clearAllMembersButton.classList.remove('bg-red-500', 'text-white');
+                             clearAllMembersButton.classList.add('bg-red-100', 'text-red-700');
+                        }
+                    }, 3000);
+                }
+            });
+
+            downloadPdfButton.addEventListener('click', () => {
+                if (state.roles.length === 0 || state.dates.length === 0) {
+                    showNotification('Roster is empty. Cannot download PDF.', true);
+                    return;
+                }
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'landscape' });
+                doc.text("Team Roster", 14, 16);
+                doc.setFontSize(10);
+                doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 22);
+                doc.autoTable({
+                    html: '#roster-table-container table',
+                    startY: 28, theme: 'grid',
+                    styles: { cellPadding: 2, fontSize: 8 },
+                    headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
+                });
+                doc.save('roster.pdf');
+            });
+            
+            const deleteRole = (roleToDelete) => {
+                recordHistory();
+                state.roles = state.roles.filter(r => r !== roleToDelete);
+                state.teamMembers.forEach(member => {
+                    member.roles = member.roles.filter(r => r !== roleToDelete);
+                });
+                Object.keys(state.roster).forEach(date => {
+                    if(state.roster[date]) delete state.roster[date][roleToDelete];
+                });
+                saveState();
+                renderAll();
+            };
+
+            const editRole = (oldRoleName, newRoleName) => {
+                 if (!newRoleName || newRoleName === oldRoleName) return;
+                if (state.roles.includes(newRoleName)) {
+                    showNotification(`Role "${newRoleName}" already exists.`, true);
+                    return;
+                }
+                recordHistory();
+                state.roles = state.roles.map(r => r === oldRoleName ? newRoleName : r);
+                state.teamMembers.forEach(member => {
+                    member.roles = member.roles.map(r => r === oldRoleName ? newRoleName : r);
+                });
+                Object.keys(state.roster).forEach(date => {
+                    if (state.roster[date] && state.roster[date][oldRoleName]) {
+                        state.roster[date][newRoleName] = state.roster[date][oldRoleName];
+                        delete state.roster[date][oldRoleName];
+                    }
+                });
+                saveState();
+                renderAll();
+            };
+
+            modalAddRoleForm.addEventListener('submit', e => {
+                e.preventDefault();
+                const roleName = modalRoleNameInput.value.trim();
+                if (roleName && !state.roles.includes(roleName)) {
+                    state.roles.push(roleName);
+                    state.roles.sort();
+                    modalRoleNameInput.value = '';
+                    saveState();
+                    renderAll();
+                } else if (state.roles.includes(roleName)) {
+                    showNotification(`Role "${roleName}" already exists.`, true);
+                }
+            });
+
+            modalRolesList.addEventListener('click', e => {
+                const deleteButton = e.target.closest('[data-delete-modal-role]');
+                const editButton = e.target.closest('[data-edit-role]');
+
+                if(deleteButton) {
+                    deleteRole(deleteButton.dataset.deleteModalRole);
+                }
+
+                if(editButton) {
+                    const roleToEdit = editButton.dataset.editRole;
+                    const newRoleName = prompt(`Enter new name for "${roleToEdit}":`, roleToEdit);
+                    if (newRoleName) {
+                        editRole(roleToEdit, newRoleName.trim());
+                    }
+                }
+            });
+            
+            downloadTemplateButton.addEventListener('click', () => {
+                const csvContent = "data:text/csv;charset=utf-8,"
+                    + "name,roles,availability,notes\n"
+                    + "John Doe,Main Camera;Photography,Weekends Only,Great eye for shots\n";
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "team_template.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+
+            csvFileInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const text = e.target.result;
+                    const lines = text.split('\n').slice(1);
+                    let newMembersCount = 0;
+
+                    lines.forEach(line => {
+                        line = line.trim();
+                        if(!line) return;
+                        
+                        const [name, rolesStr, availability, notes] = line.split(',');
+                        if (name && name.trim()) {
+                            const roles = rolesStr ? rolesStr.split(';').map(r => r.trim()).filter(r => state.roles.includes(r)) : [];
+                            state.teamMembers.push({
+                                id: Date.now() + Math.random(),
+                                name: name.trim(),
+                                roles: roles,
+                                availability: availability ? availability.trim() : '',
+                                notes: notes ? notes.trim() : ''
+                            });
+                            newMembersCount++;
+                        }
+                    });
+
+                    if (newMembersCount > 0) {
+                        saveState();
+                        renderTeamMembers();
+                        showNotification(`${newMembersCount} new members imported successfully!`);
+                    } else {
+                        showNotification('Could not import any new members. Check file format.', true);
+                    }
+                    csvFileInput.value = '';
+                };
+                reader.readAsText(file);
+            });
+
+            teamModalButton.addEventListener('click', () => teamModal.showModal());
+            closeModalButton.addEventListener('click', () => teamModal.close());
+            teamModal.addEventListener('click', (e) => {
+                if (e.target === teamModal) teamModal.close();
+            });
+
+            function resetMemberForm() {
+                state.editingMemberId = null;
+                addMemberForm.reset();
+                addMemberForm.querySelector('button[type="submit"]').textContent = 'Add Member';
+                cancelEditButton.classList.add('hidden');
+            }
+
+            // --- INITIALIZATION ---
+            loadState();
+            dateInput.min = new Date().toISOString().split("T")[0];
+            renderAll();
+            updateUndoRedoButtons();
+        });
+    </script>
+</body>
+</html>
+
+
