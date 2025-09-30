@@ -6,7 +6,7 @@
     <title>Interactive Roster Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -53,6 +53,10 @@
         .drag-over {
             background-color: #dbeafe !important; /* blue-100 */
             border: 2px dashed #60a5fa; /* blue-400 */
+        }
+        
+        .role-row.drag-over-row {
+            box-shadow: inset 0 2px 0 0 #3b82f6;
         }
         
         /* Toggle switch */
@@ -246,6 +250,17 @@
                              <input type="text" id="member-notes" placeholder="e.g., Great eye for shots" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
+                    <!-- Not Available Dates Section -->
+                    <div class="mt-4 md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Not Available On</label>
+                        <div class="flex gap-2">
+                            <input type="date" id="member-unavailable-date" class="flex-grow w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <button type="button" id="add-unavailable-date-button" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300">Add</button>
+                        </div>
+                        <div id="unavailable-dates-list" class="mt-2 flex flex-wrap gap-2">
+                            <!-- Unavailable dates will be listed here -->
+                        </div>
+                    </div>
                     <div class="flex justify-end gap-2 mt-4">
                         <button type="button" id="cancel-edit-button" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors hidden">Cancel</button>
                         <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm text-sm font-semibold hover:bg-blue-700 transition-colors">Add Member</button>
@@ -283,17 +298,20 @@
             const memberNameInput = document.getElementById('member-name');
             const memberAvailabilityInput = document.getElementById('member-availability');
             const memberNotesInput = document.getElementById('member-notes');
+            const unavailableDateInput = document.getElementById('member-unavailable-date');
+            const addUnavailableDateButton = document.getElementById('add-unavailable-date-button');
+            const unavailableDatesList = document.getElementById('unavailable-dates-list');
             const rolesCheckboxesContainer = document.getElementById('roles-checkboxes');
             const teamMembersList = document.getElementById('team-members-list');
             const teamMembersHeading = document.getElementById('team-members-heading');
             const noMembersMessage = document.getElementById('no-members-message');
             const generateRosterButton = document.getElementById('generate-roster-button');
             const clearRosterButton = document.getElementById('clear-roster-button');
-            const cancelEditButton = document.getElementById('cancel-edit-button');
+            const notificationArea = document.getElementById('notification-area');
             const downloadTemplateButton = document.getElementById('download-template-button');
             const csvFileInput = document.getElementById('csv-file-input');
-            const notificationArea = document.getElementById('notification-area');
             const clearAllMembersButton = document.getElementById('clear-all-members-button');
+            const cancelEditButton = document.getElementById('cancel-edit-button');
             const downloadPdfButton = document.getElementById('download-pdf-button');
             const allowDuplicatesToggle = document.getElementById('allow-duplicates-toggle');
             const undoButton = document.getElementById('undo-button');
@@ -313,58 +331,15 @@
             let state = {};
             let history = [];
             let historyIndex = -1;
+            let currentUnavailableDates = []; // Temp state for form
             const MAX_HISTORY = 20;
 
             const updateState = (newState) => {
                 state = newState;
-                renderAll();
                 saveState();
-            }
-
-            const recordHistory = () => {
-                // When a change is made, clear any 'redo' history
-                if (historyIndex < history.length - 1) {
-                    history = history.slice(0, historyIndex + 1);
-                }
-                
-                // Push a deep copy of the current roster state
-                history.push(JSON.parse(JSON.stringify(state.roster)));
-
-                // Limit history size
-                if (history.length > MAX_HISTORY) {
-                    history.shift();
-                }
-
-                historyIndex = history.length - 1;
-                updateUndoRedoButtons();
-            };
-            
-            const undo = () => {
-                if (historyIndex > 0) {
-                    historyIndex--;
-                    state.roster = JSON.parse(JSON.stringify(history[historyIndex]));
-                    renderAll();
-                    saveState();
-                    updateUndoRedoButtons();
-                }
+                renderAll();
             };
 
-            const redo = () => {
-                if (historyIndex < history.length - 1) {
-                    historyIndex++;
-                    state.roster = JSON.parse(JSON.stringify(history[historyIndex]));
-                    renderAll();
-                    saveState();
-                    updateUndoRedoButtons();
-                }
-            };
-            
-            const updateUndoRedoButtons = () => {
-                undoButton.disabled = historyIndex <= 0;
-                redoButton.disabled = historyIndex >= history.length - 1;
-            };
-
-            // --- LOCAL STORAGE ---
             const saveState = () => {
                 localStorage.setItem('rosterAppState', JSON.stringify(state));
             };
@@ -380,38 +355,69 @@
                         dates: [],
                         teamMembers: [],
                         roster: {},
-                        editingMemberId: null,
                         settings: {
                             allowDuplicates: false
                         }
                     };
                 }
+                 // Ensure all members have the unavailableDates property for backward compatibility
+                state.teamMembers.forEach(m => {
+                    if (!m.unavailableDates) {
+                        m.unavailableDates = [];
+                    }
+                });
                  // Initialize history with the loaded state
                 history = [JSON.parse(JSON.stringify(state.roster))];
                 historyIndex = 0;
             };
+
+            // --- HISTORY (UNDO/REDO) MANAGEMENT ---
+            const pushToHistory = () => {
+                // Clear future states
+                if (historyIndex < history.length - 1) {
+                    history = history.slice(0, historyIndex + 1);
+                }
+                
+                // Add new state
+                const currentRosterState = JSON.parse(JSON.stringify(state.roster));
+                history.push(currentRosterState);
+
+                // Limit history size
+                if (history.length > MAX_HISTORY) {
+                    history.shift();
+                }
+                
+                historyIndex = history.length - 1;
+                updateUndoRedoButtons();
+            };
+
+            const undo = () => {
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    state.roster = JSON.parse(JSON.stringify(history[historyIndex]));
+                    saveState();
+                    renderRosterTable();
+                    updateUndoRedoButtons();
+                }
+            };
             
-            // --- UTILITY FUNCTIONS ---
-            const showNotification = (message, isError = false) => {
-                const notification = document.createElement('div');
-                notification.textContent = message;
-                notification.className = `px-4 py-2 rounded-lg shadow-md text-white ${isError ? 'bg-red-500' : 'bg-green-500'}`;
-                notificationArea.appendChild(notification);
-
-                setTimeout(() => {
-                    notification.style.transition = 'opacity 0.5s ease';
-                    notification.style.opacity = '0';
-                    setTimeout(() => notification.remove(), 500);
-                }, 3000);
+            const redo = () => {
+                if (historyIndex < history.length - 1) {
+                    historyIndex++;
+                    state.roster = JSON.parse(JSON.stringify(history[historyIndex]));
+                    saveState();
+                    renderRosterTable();
+                    updateUndoRedoButtons();
+                }
             };
 
-             const isDuplicateInDate = (name, date) => {
-                if (state.settings.allowDuplicates || !name) return false;
-                const assignmentsOnDate = state.roster[date] || {};
-                return Object.values(assignmentsOnDate).includes(name);
+            const updateUndoRedoButtons = () => {
+                undoButton.disabled = historyIndex <= 0;
+                redoButton.disabled = historyIndex >= history.length - 1;
             };
 
-            // --- RENDERING FUNCTIONS ---
+
+            // --- UI RENDERING FUNCTIONS ---
             const renderAll = () => {
                 renderRosterTable();
                 renderRolesCheckboxes();
@@ -423,58 +429,67 @@
             };
 
             const renderRosterTable = () => {
-                let tableHTML = `
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-slate-50 sticky top-0 z-10">
-                            <tr>
-                                <th class="p-3 font-semibold text-slate-600 w-1/4">Roles</th>
-                `;
-                state.dates.forEach(d => {
+                if (state.dates.length === 0 || state.roles.length === 0) {
+                    rosterTableContainer.innerHTML = `<div class="p-8 text-center text-slate-500">
+                        <p class="font-semibold">Your roster is empty.</p>
+                        <p class="mt-1 text-sm">Add some roles and dates to get started.</p>
+                    </div>`;
+                    return;
+                }
+
+                const sortedDates = [...state.dates].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                let tableHTML = `<table class="w-full text-sm text-left">`;
+                tableHTML += `<thead class="bg-slate-100 text-xs text-slate-600 uppercase"><tr>`;
+                tableHTML += `<th class="px-6 py-3 sticky left-0 bg-slate-100 z-10 w-48">
+                                <div class="flex items-center justify-between">
+                                    Role
+                                </div>
+                             </th>`;
+
+                sortedDates.forEach(d => {
                     const dateObj = new Date(d.date + 'T00:00:00');
                     const day = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-                    const dateStr = dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
-                    tableHTML += `
-                        <th class="p-3 font-semibold text-slate-900 border-l border-slate-200 relative group" data-date-header="${d.date}">
-                             <div class="cursor-pointer" title="Double-click to edit">
-                                <div>${day} ${dateStr}</div>
-                                <div class="font-normal text-slate-500">${d.event}</div>
+                    const date = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    tableHTML += `<th scope="col" class="px-6 py-3 group" data-date-header="${d.date}" data-event-header="${d.event}">
+                        <div class="flex items-center justify-between">
+                             <div>
+                                <p class="font-bold">${date}</p>
+                                <p class="font-normal text-slate-500">${d.event || day}</p>
                             </div>
-                            <button data-delete-date="${d.date}" class="absolute top-1 right-1 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete this column">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            <button data-date-to-delete="${d.date}" class="p-1 text-slate-400 hover:text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Date">
+                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
-                        </th>`;
+                        </div>
+                    </th>`;
                 });
-                tableHTML += '</tr></thead><tbody>';
+                tableHTML += `</tr></thead><tbody id="roster-tbody">`;
 
                 state.roles.forEach(role => {
-                    tableHTML += '<tr class="border-t border-slate-200">';
-                    tableHTML += `<td class="p-3 font-medium text-slate-700 relative group">${role} <button data-role-to-delete="${role}" class="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity" title="Delete this role">&times;</button></td>`;
-                    state.dates.forEach(d => {
-                         const assignedMember = state.roster[d.date]?.[role] || '';
-                         tableHTML += `<td class="p-1 border-l border-slate-200">
-                            <div class="roster-cell w-full px-2 py-3 rounded-md cursor-pointer ${assignedMember ? 'bg-blue-100 text-blue-800 font-medium' : 'text-slate-400' }"
-                                 tabindex="0" 
-                                 draggable="true"
-                                 data-date="${d.date}"
-                                 data-role="${role}">
-                                ${assignedMember || ''}
-                            </div>
-                         </td>`;
+                    tableHTML += `<tr class="role-row bg-white border-b hover:bg-slate-50 group" draggable="true" data-role-row="${role}">`;
+                    tableHTML += `<th scope="row" class="px-6 py-4 font-medium text-slate-900 sticky left-0 bg-white group-hover:bg-slate-50 z-10 w-48 cursor-grab">
+                                    <div class="flex items-center justify-between">
+                                        <span>${role}</span>
+                                        <button data-role-to-delete="${role}" class="p-1 text-slate-400 hover:text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Role">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                        </button>
+                                    </div>
+                                 </th>`;
+                    sortedDates.forEach(d => {
+                        const assignedMember = (state.roster[d.date] && state.roster[d.date][role]) || '';
+                        tableHTML += `<td class="roster-cell px-6 py-4 cursor-pointer" data-date="${d.date}" data-role="${role}" draggable="true" tabindex="0">${assignedMember}</td>`;
                     });
-                    tableHTML += '</tr>';
+                    tableHTML += `</tr>`;
                 });
-                tableHTML += '</tbody></table>';
-                
-                if (state.roles.length === 0 || state.dates.length === 0) {
-                     rosterTableContainer.innerHTML = `<div class="p-8 text-center text-slate-500">
-                        <p>Your roster will appear here.</p>
-                        <p>Start by adding roles and dates above.</p>
-                     </div>`;
+
+                tableHTML += `</tbody></table>`;
+                if (rosterTableContainer.innerHTML === tableHTML) {
+                    console.log("Roster is the same, not re-rendering table.");
                 } else {
                     rosterTableContainer.innerHTML = tableHTML;
                 }
             };
-
+            
             const renderVolunteerDropdown = () => {
                 if (state.teamMembers.length > 0) {
                     volunteerLookupSection.classList.remove('hidden');
@@ -499,33 +514,28 @@
                     return;
                 }
                 modalRolesList.innerHTML = state.roles.map(role => `
-                    <div class="flex justify-between items-center bg-slate-100 p-2 rounded-md text-sm">
-                        <span class="font-medium text-slate-700">${role}</span>
-                        <div class="flex gap-2">
-                            <button data-edit-role="${role}" class="text-slate-500 hover:text-blue-600">
-                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                            </button>
-                             <button data-delete-modal-role="${role}" class="text-slate-500 hover:text-red-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                            </button>
-                        </div>
+                    <div class="flex items-center justify-between bg-slate-100 p-2 rounded-md">
+                        <input type="text" value="${role}" data-original-role="${role}" class="modal-role-input flex-grow bg-transparent text-sm font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 rounded-sm px-1">
+                        <button data-role-to-delete="${role}" class="ml-2 p-1 text-slate-500 hover:text-red-600 rounded-full hover:bg-red-100">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
                     </div>
                 `).join('');
             };
-            
+
             const renderRolesCheckboxes = () => {
-                if (state.roles.length === 0) {
-                     rolesCheckboxesContainer.innerHTML = `<p class="text-slate-500 col-span-full">No roles defined. Add roles first.</p>`;
-                     return;
+                if (state.roles.length > 0) {
+                    rolesCheckboxesContainer.innerHTML = state.roles.map(role => `
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" name="roles" value="${role}" class="rounded border-slate-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-offset-0 focus:ring-blue-200 focus:ring-opacity-50">
+                            <span>${role}</span>
+                        </label>
+                    `).join('');
+                } else {
+                    rolesCheckboxesContainer.innerHTML = `<p class="text-slate-500 col-span-full">No roles defined. Add roles in the main screen first.</p>`;
                 }
-                rolesCheckboxesContainer.innerHTML = state.roles.map(role => `
-                    <label class="flex items-center gap-2 p-2 rounded-md hover:bg-slate-100 cursor-pointer">
-                        <input type="checkbox" name="roles" value="${role}" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                        <span>${role}</span>
-                    </label>
-                `).join('');
             };
-            
+
             const renderTeamMembers = () => {
                 if(state.teamMembers.length === 0) {
                     noMembersMessage.classList.remove('hidden');
@@ -535,24 +545,30 @@
                 } else {
                     noMembersMessage.classList.add('hidden');
                     teamMembersList.innerHTML = state.teamMembers.map(member => `
-                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                            <div class="flex justify-between items-start">
-                                <h4 class="font-semibold text-slate-800">${member.name}</h4>
-                                <div class="flex gap-2">
-                                    <button data-edit-id="${member.id}" class="text-slate-500 hover:text-blue-600">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                                    </button>
-                                    <button data-delete-id="${member.id}" class="text-slate-500 hover:text-red-600">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                    </button>
-                                </div>
+                        <div class="bg-slate-100 p-4 rounded-lg border border-slate-200 shadow-sm relative">
+                            <div class="absolute top-2 right-2 flex gap-1">
+                                <button data-member-id-edit="${member.id}" class="p-1 text-slate-500 hover:text-blue-600 rounded-full hover:bg-blue-100 transition-colors" title="Edit Member">
+                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                </button>
+                                <button data-member-id-delete="${member.id}" class="p-1 text-slate-500 hover:text-red-600 rounded-full hover:bg-red-100 transition-colors" title="Delete Member">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                </button>
                             </div>
-                            <div class="mt-2 flex flex-wrap gap-1">
-                                ${member.roles.map(role => `<span class="text-xs font-medium bg-slate-200 text-slate-600 px-2 py-1 rounded-full">${role}</span>`).join('') || '<span class="text-xs text-slate-400">No roles assigned</span>'}
+                            <p class="font-semibold text-slate-800 pr-12">${member.name}</p>
+                            <div class="flex flex-wrap gap-1 mt-2">
+                                ${member.roles.map(role => `<span class="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${role}</span>`).join('')}
                             </div>
                             <div class="mt-2 space-y-1 text-sm text-slate-600">
                                 <p><strong class="font-medium">Availability:</strong> ${member.availability || 'Not set'}</p>
                                 <p class="italic">"${member.notes || 'No notes'}"</p>
+                            </div>
+                            <div class="mt-3">
+                                <p class="text-xs font-medium text-slate-500 mb-1">Unavailable Dates:</p>
+                                <div class="flex flex-wrap gap-1">
+                                ${member.unavailableDates && member.unavailableDates.length > 0 
+                                    ? member.unavailableDates.map(date => `<span class="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-1 rounded-full">${new Date(date + 'T00:00:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</span>`).join('') 
+                                    : '<span class="text-xs text-slate-400">None</span>'}
+                                </div>
                             </div>
                         </div>
                     `).join('');
@@ -564,48 +580,65 @@
                  teamMembersHeading.textContent = `Team Members (${state.teamMembers.length})`;
             };
 
+            const renderUnavailableDatesList = () => {
+                unavailableDatesList.innerHTML = currentUnavailableDates.map(date => `
+                    <span class="flex items-center gap-1 text-xs font-medium bg-red-100 text-red-800 px-2 py-1 rounded-full">
+                        ${new Date(date + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        <button type="button" data-date-to-remove="${date}" class="font-bold text-red-600 hover:text-red-800">&times;</button>
+                    </span>
+                `).join('');
+            };
+
             // --- EVENT HANDLERS (GENERAL) ---
             addRoleForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const roleName = roleNameInput.value.trim();
-                if (roleName && !state.roles.includes(roleName)) {
-                    state.roles.push(roleName);
-                    roleNameInput.value = '';
-                    recordHistory();
+                const newRole = roleNameInput.value.trim();
+                if (newRole && !state.roles.includes(newRole)) {
+                    state.roles.push(newRole);
                     saveState();
-                    renderAll();
+                    renderRosterTable();
+                    renderRolesCheckboxes();
+                    renderModalRolesList();
+                    roleNameInput.value = '';
                 }
             });
 
             addDateForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const date = dateInput.value;
-                const eventName = eventNameInput.value.trim() || 'Event';
-                if (date && !state.dates.some(d => d.date === date)) {
-                    state.dates.push({ date, event: eventName });
-                    state.dates.sort((a, b) => new Date(a.date) - new Date(b.date));
-                    eventNameInput.value = '';
-                    recordHistory();
+                const newDate = dateInput.value;
+                const newEvent = eventNameInput.value.trim();
+                if (newDate && !state.dates.some(d => d.date === newDate)) {
+                    state.dates.push({ date: newDate, event: newEvent });
                     saveState();
-                    renderAll();
+                    renderRosterTable();
+                    dateInput.value = '';
+                    eventNameInput.value = '';
                 }
             });
-            
+
             generateRosterButton.addEventListener('click', () => {
-                recordHistory();
-                state.roster = {}; // Reset roster
-                state.dates.forEach(d => {
+                state.roster = {}; // Clear existing roster assignments
+                const sortedDates = [...state.dates].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                sortedDates.forEach(d => {
                     state.roster[d.date] = {};
                     const assignedToday = new Set();
-                    const rolesWithMemberCounts = state.roles.map(role => ({
-                        role,
-                        count: state.teamMembers.filter(member => member.roles.includes(role)).length
-                    }));
+                    
+                    const rolesWithMemberCounts = state.roles.map(role => {
+                         const count = state.teamMembers.filter(member => 
+                            member.roles.includes(role) &&
+                            (!member.unavailableDates || !member.unavailableDates.includes(d.date))
+                        ).length;
+                        return { role, count };
+                    });
+                    
                     const prioritizedRoles = rolesWithMemberCounts.sort((a, b) => a.count - b.count).map(item => item.role);
 
                     prioritizedRoles.forEach(role => {
                         const availableMembers = state.teamMembers.filter(
-                            member => member.roles.includes(role) && (state.settings.allowDuplicates || !assignedToday.has(member.id))
+                            member => member.roles.includes(role) && 
+                            (!member.unavailableDates || !member.unavailableDates.includes(d.date)) &&
+                            (state.settings.allowDuplicates || !assignedToday.has(member.id))
                         );
                         if (availableMembers.length > 0) {
                             const chosenMember = availableMembers[Math.floor(Math.random() * availableMembers.length)];
@@ -613,30 +646,30 @@
                             if (!state.settings.allowDuplicates) {
                                 assignedToday.add(chosenMember.id);
                             }
-                        } else {
-                            state.roster[d.date][role] = '';
                         }
                     });
                 });
+                pushToHistory();
                 saveState();
                 renderRosterTable();
             });
 
             clearRosterButton.addEventListener('click', () => {
-                recordHistory();
                 state.roster = {};
+                pushToHistory();
                 saveState();
                 renderRosterTable();
             });
-
-            allowDuplicatesToggle.addEventListener('change', () => {
+            
+             allowDuplicatesToggle.addEventListener('change', () => {
                 state.settings.allowDuplicates = allowDuplicatesToggle.checked;
                 saveState();
             });
 
             undoButton.addEventListener('click', undo);
             redoButton.addEventListener('click', redo);
-            document.addEventListener('keydown', e => {
+
+            document.addEventListener('keydown', (e) => {
                 if (e.ctrlKey && e.key === 'z') {
                     e.preventDefault();
                     undo();
@@ -677,6 +710,12 @@
                             if (!state.settings) {
                                 state.settings = { allowDuplicates: false };
                             }
+                             // Ensure all members have the unavailableDates property for backward compatibility
+                            state.teamMembers.forEach(m => {
+                                if (!m.unavailableDates) {
+                                    m.unavailableDates = [];
+                                }
+                            });
                             history = [JSON.parse(JSON.stringify(state.roster))];
                             historyIndex = 0;
                             saveState();
@@ -700,123 +739,81 @@
                 displayAssignmentsForVolunteer(volunteerSelect.value);
             });
 
+            addUnavailableDateButton.addEventListener('click', () => {
+                const date = unavailableDateInput.value;
+                if (date && !currentUnavailableDates.includes(date)) {
+                    currentUnavailableDates.push(date);
+                    currentUnavailableDates.sort();
+                    unavailableDateInput.value = '';
+                    renderUnavailableDatesList();
+                }
+            });
+
+            unavailableDatesList.addEventListener('click', e => {
+                const removeButton = e.target.closest('[data-date-to-remove]');
+                if (removeButton) {
+                    const dateToRemove = removeButton.dataset.dateToRemove;
+                    currentUnavailableDates = currentUnavailableDates.filter(d => d !== dateToRemove);
+                    renderUnavailableDatesList();
+                }
+            });
+
 
             // --- ROSTER TABLE INTERACTIVITY ---
             const makeHeaderEditable = (th) => {
                 if (th.querySelector('input')) return; // Already editing
-
-                const oldDateStr = th.dataset.dateHeader;
-                const dateObj = state.dates.find(d => d.date === oldDateStr);
-                if (!dateObj) return;
-
-                const originalContent = th.innerHTML;
-
+                const originalDate = th.dataset.dateHeader;
+                const originalEvent = th.dataset.eventHeader;
                 th.innerHTML = `
-                    <div class="p-1 space-y-1">
-                        <input type="date" value="${dateObj.date}" class="w-full text-sm p-1 border rounded border-slate-300">
-                        <input type="text" value="${dateObj.event}" class="w-full text-sm p-1 border rounded border-slate-300" placeholder="Event Name">
+                    <div class="p-1">
+                        <input type="date" value="${originalDate}" class="block w-full text-sm p-1 border border-slate-300 rounded-md mb-1">
+                        <input type="text" value="${originalEvent}" class="block w-full text-sm p-1 border border-slate-300 rounded-md">
                     </div>`;
-
+                
                 const dateInput = th.querySelector('input[type="date"]');
                 const eventInput = th.querySelector('input[type="text"]');
                 dateInput.focus();
 
-                const finishOnce = (() => {
-                    let hasFinished = false;
-                    return () => {
-                        if (hasFinished) return;
-                        hasFinished = true;
+                const saveChanges = () => {
+                    const newDate = dateInput.value;
+                    const newEvent = eventInput.value;
 
-                        const newDate = dateInput.value;
-                        const newEvent = eventInput.value.trim() || 'Event';
+                    // Check if date already exists
+                    if (newDate !== originalDate && state.dates.some(d => d.date === newDate)) {
+                         showNotification(`Date ${newDate} already exists.`, true);
+                         renderRosterTable(); // Revert
+                         return;
+                    }
 
-                        if (!newDate) { // Date cannot be empty
-                            th.innerHTML = originalContent;
-                            return;
+                    const dateIndex = state.dates.findIndex(d => d.date === originalDate);
+                    if (dateIndex !== -1) {
+                        state.dates[dateIndex].date = newDate;
+                        state.dates[dateIndex].event = newEvent;
+
+                        // Also update the roster object key
+                        if (newDate !== originalDate && state.roster[originalDate]) {
+                            state.roster[newDate] = state.roster[originalDate];
+                            delete state.roster[originalDate];
                         }
-
-                        // Check if new date (if changed) already exists
-                        if (newDate !== oldDateStr && state.dates.some(d => d.date === newDate)) {
-                            showNotification(`Date ${newDate} already exists.`, true);
-                            th.innerHTML = originalContent;
-                            return;
-                        }
-                        
-                        recordHistory();
-
-                        // Find original object to update
-                        const originalDateObj = state.dates.find(d => d.date === oldDateStr);
-                        if (originalDateObj) {
-                            originalDateObj.event = newEvent;
-                            originalDateObj.date = newDate;
-
-                             // If date changed, update the roster key
-                            if (newDate !== oldDateStr) {
-                                state.roster[newDate] = state.roster[oldDateStr];
-                                delete state.roster[oldDateStr];
-                            }
-                        }
-                       
-                        state.dates.sort((a, b) => new Date(a.date) - new Date(b.date));
-
+                        pushToHistory();
                         saveState();
                         renderRosterTable();
-                    };
-                })();
-                
-                const revert = () => {
-                    th.innerHTML = originalContent;
-                };
-
-                th.querySelectorAll('input').forEach(input => {
-                    input.addEventListener('blur', finishOnce);
-                    input.addEventListener('keydown', e => {
-                        if (e.key === 'Enter') finishOnce();
-                        if (e.key === 'Escape') revert();
-                    });
-                });
-            };
-
-            const makeCellEditable = (cell) => {
-                if (cell.querySelector('input')) return; // Already editing
-                const originalValue = cell.textContent.trim();
-                cell.innerHTML = `<input type="text" class="w-full h-full bg-white border-2 border-blue-500 rounded-md px-2 py-1.5 text-sm" value="${originalValue}">`;
-                const input = cell.querySelector('input');
-                input.focus();
-                input.select();
-
-                const finishEditing = () => {
-                    const newValue = input.value.trim();
-                    const { date, role } = cell.dataset;
-
-                    // Validation check
-                    const currentAssignee = state.roster[date]?.[role] || '';
-                    if (newValue !== currentAssignee && isDuplicateInDate(newValue, date)) {
-                        showNotification(`${newValue} is already assigned on this day.`, true);
-                        cell.innerHTML = originalValue; // Revert
-                    } else {
-                        recordHistory();
-                        if (!state.roster[date]) state.roster[date] = {};
-                        state.roster[date][role] = newValue;
-                        saveState();
-                        renderRosterTable();
-                        // Find and focus the cell again after re-render
-                        setTimeout(() => {
-                           const newCell = rosterTableContainer.querySelector(`[data-date="${date}"][data-role="${role}"]`);
-                           if(newCell) newCell.focus();
-                        }, 0);
                     }
                 };
-                
-                input.addEventListener('blur', finishEditing);
-                input.addEventListener('keydown', e => {
+
+                th.addEventListener('keydown', e => {
                     if (e.key === 'Enter') {
-                        finishEditing();
+                        saveChanges();
                     } else if (e.key === 'Escape') {
-                        cell.innerHTML = originalValue; // Revert
-                        cell.focus();
+                        renderRosterTable(); // Revert
                     }
                 });
+
+                th.addEventListener('blur', (e) => {
+                    if (!th.contains(e.relatedTarget)) {
+                        saveChanges();
+                    }
+                }, true);
             };
 
             const displayAssignmentsForVolunteer = (volunteerName) => {
@@ -857,7 +854,7 @@
                             <div class="flex justify-between items-center bg-slate-100 p-3 rounded-md text-sm">
                                 <div>
                                     <p class="font-semibold text-slate-800">${a.role}</p>
-                                    <p class="text-slate-500">${formattedDate} - (${a.event})</p>
+                                    <p class="text-slate-500">${formattedDate} - (${a.event || 'Event'})</p>
                                 </div>
                             </div>
                         `;
@@ -868,128 +865,260 @@
 
             rosterTableContainer.addEventListener('click', e => {
                 const roleDeleteBtn = e.target.closest('[data-role-to-delete]');
+                const dateDeleteBtn = e.target.closest('[data-date-to-delete]');
+
                 if (roleDeleteBtn) {
-                    deleteRole(roleDeleteBtn.dataset.roleToDelete);
-                    return;
+                    const roleToDelete = roleDeleteBtn.dataset.roleToDelete;
+                    state.roles = state.roles.filter(r => r !== roleToDelete);
+                    // Also remove from roster and team members
+                    state.teamMembers.forEach(m => {
+                        m.roles = m.roles.filter(r => r !== roleToDelete);
+                    });
+                    Object.keys(state.roster).forEach(date => {
+                        delete state.roster[date][roleToDelete];
+                    });
+                    pushToHistory();
+                    updateState(state);
                 }
-                
-                const dateDeleteBtn = e.target.closest('[data-delete-date]');
                 if(dateDeleteBtn) {
-                    const dateToDelete = dateDeleteBtn.dataset.deleteDate;
-                    recordHistory();
+                    const dateToDelete = dateDeleteBtn.dataset.dateToDelete;
                     state.dates = state.dates.filter(d => d.date !== dateToDelete);
                     delete state.roster[dateToDelete];
-                    saveState();
-                    renderAll();
-                    return;
-                }
-
-                const cell = e.target.closest('.roster-cell');
-                if (cell) {
-                    makeCellEditable(cell);
+                    pushToHistory();
+                    updateState(state);
                 }
             });
-
+            
             rosterTableContainer.addEventListener('dblclick', e => {
-                const header = e.target.closest('[data-date-header]');
-                if (header) {
-                    makeHeaderEditable(header);
-                }
+                 const header = e.target.closest('[data-date-header]');
+                 if (header) {
+                     makeHeaderEditable(header);
+                 }
             });
 
-            rosterTableContainer.addEventListener('keydown', e => {
+            rosterTableContainer.addEventListener('keydown', (e) => {
                 const activeCell = document.activeElement;
-                if (!activeCell.classList.contains('roster-cell')) return;
+                if (!activeCell || !activeCell.classList.contains('roster-cell')) return;
 
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     makeCellEditable(activeCell);
-                    return;
+                } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                    e.preventDefault();
+                    moveFocus(activeCell, e.key);
                 }
+            });
 
+            const moveFocus = (currentCell, direction) => {
                 const allCells = Array.from(rosterTableContainer.querySelectorAll('.roster-cell'));
-                const currentIndex = allCells.indexOf(activeCell);
+                const currentIndex = allCells.indexOf(currentCell);
                 const numCols = state.dates.length;
+                let nextIndex;
 
-                let nextIndex = -1;
-                switch(e.key) {
-                    case 'ArrowUp': nextIndex = currentIndex - numCols; break;
-                    case 'ArrowDown': nextIndex = currentIndex + numCols; break;
-                    case 'ArrowLeft': nextIndex = currentIndex - 1; break;
-                    case 'ArrowRight': nextIndex = currentIndex + 1; break;
+                switch (direction) {
+                    case 'ArrowUp':
+                        nextIndex = currentIndex - numCols;
+                        break;
+                    case 'ArrowDown':
+                        nextIndex = currentIndex + numCols;
+                        break;
+                    case 'ArrowLeft':
+                        nextIndex = currentIndex - 1;
+                        break;
+                    case 'ArrowRight':
+                        nextIndex = currentIndex + 1;
+                        break;
                 }
 
                 if (nextIndex >= 0 && nextIndex < allCells.length) {
-                    e.preventDefault();
                     allCells[nextIndex].focus();
                 }
-            });
-
-            // Drag and Drop (Mouse & Touch)
-            let draggedItem = null;
+            };
             
+            const makeCellEditable = (cell) => {
+                if (cell.querySelector('input')) return; // Already editing
+                const originalValue = cell.textContent;
+                cell.innerHTML = `<input type="text" value="${originalValue}" class="w-full h-full bg-blue-50 border-0 focus:ring-1 focus:ring-blue-500 rounded-md p-1 -m-1">`;
+                const input = cell.querySelector('input');
+                input.focus();
+                input.select();
+
+                const saveChange = () => {
+                     const newValue = input.value.trim();
+                     const date = cell.dataset.date;
+                     const role = cell.dataset.role;
+
+                     // Validation
+                     if (!state.settings.allowDuplicates && newValue) {
+                        const dayAssignments = state.roster[date] || {};
+                        for (const r in dayAssignments) {
+                            if (dayAssignments[r] === newValue && r !== role) {
+                                showNotification(`${newValue} is already assigned a role on this day.`, true);
+                                cell.textContent = originalValue; // Revert
+                                return;
+                            }
+                        }
+                    }
+
+                     cell.textContent = newValue;
+                     if (!state.roster[date]) state.roster[date] = {};
+                     state.roster[date][role] = newValue;
+                     pushToHistory();
+                     saveState();
+                };
+
+                input.addEventListener('blur', saveChange);
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        saveChange();
+                        cell.focus();
+                    } else if (e.key === 'Escape') {
+                        cell.innerHTML = originalValue;
+                        cell.focus();
+                    }
+                });
+            };
+
+            rosterTableContainer.addEventListener('click', e => {
+                const cell = e.target.closest('.roster-cell');
+                if (cell) makeCellEditable(cell);
+            });
+            
+            // --- CELL Drag and Drop Logic ---
+            let dragSrcCell = null;
             rosterTableContainer.addEventListener('dragstart', e => {
-                draggedItem = e.target;
-                e.dataTransfer.effectAllowed = 'move';
-                e.dataTransfer.setData('text/html', draggedItem.innerHTML);
-                setTimeout(() => draggedItem.classList.add('dragging'), 0);
+                if (e.target.classList.contains('roster-cell')) {
+                    e.target.classList.add('dragging');
+                    dragSrcCell = e.target;
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/html', e.target.innerHTML);
+                }
+            });
+            rosterTableContainer.addEventListener('dragover', e => {
+                 if (e.target.classList.contains('roster-cell')) {
+                    e.preventDefault();
+                    e.target.classList.add('drag-over');
+                 }
+            });
+            rosterTableContainer.addEventListener('dragleave', e => {
+                if (e.target.classList.contains('roster-cell')) e.target.classList.remove('drag-over');
+            });
+            rosterTableContainer.addEventListener('drop', e => {
+                 if (e.target.classList.contains('roster-cell')) {
+                    e.stopPropagation();
+                    if (dragSrcCell !== e.target) {
+                        const srcDate = dragSrcCell.dataset.date;
+                        const srcRole = dragSrcCell.dataset.role;
+                        const destDate = e.target.dataset.date;
+                        const destRole = e.target.dataset.role;
+                        const srcVal = state.roster[srcDate]?.[srcRole] || '';
+                        const destVal = state.roster[destDate]?.[destRole] || '';
+
+                        // Validation for destination
+                        if (!state.settings.allowDuplicates && srcVal) {
+                            const destDayAssignments = state.roster[destDate] || {};
+                            for (const r in destDayAssignments) {
+                                if (destDayAssignments[r] === srcVal && r !== destRole) {
+                                    showNotification(`${srcVal} is already assigned a role on ${destDate}. Swap aborted.`, true);
+                                    return;
+                                }
+                            }
+                        }
+                        // Validation for source (if swapping)
+                        if (!state.settings.allowDuplicates && destVal) {
+                            const srcDayAssignments = state.roster[srcDate] || {};
+                            for (const r in srcDayAssignments) {
+                                if (srcDayAssignments[r] === destVal && r !== srcRole) {
+                                    showNotification(`${destVal} is already assigned a role on ${srcDate}. Swap aborted.`, true);
+                                    return;
+                                }
+                            }
+                        }
+                        
+                        // Perform swap
+                        if (!state.roster[srcDate]) state.roster[srcDate] = {};
+                        if (!state.roster[destDate]) state.roster[destDate] = {};
+                        state.roster[srcDate][srcRole] = destVal;
+                        state.roster[destDate][destRole] = srcVal;
+
+                        pushToHistory();
+                        saveState();
+                        renderRosterTable();
+                    }
+                 }
+            });
+            rosterTableContainer.addEventListener('dragend', e => {
+                if(e.target.classList.contains('roster-cell')){
+                    e.target.classList.remove('dragging');
+                    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+                }
             });
 
-             rosterTableContainer.addEventListener('dragend', e => {
-                draggedItem.classList.remove('dragging');
+            // --- ROW Drag and Drop Logic ---
+            let draggedRoleRow = null;
+            rosterTableContainer.addEventListener('dragstart', e => {
+                const row = e.target.closest('.role-row');
+                if (row) {
+                    draggedRoleRow = row;
+                    setTimeout(() => {
+                        row.classList.add('dragging');
+                    }, 0);
+                }
             });
 
+            rosterTableContainer.addEventListener('dragend', e => {
+                const row = e.target.closest('.role-row');
+                if (row) {
+                    row.classList.remove('dragging');
+                    document.querySelectorAll('.drag-over-row').forEach(el => el.classList.remove('drag-over-row'));
+                }
+            });
+            
             rosterTableContainer.addEventListener('dragover', e => {
                 e.preventDefault();
-                const target = e.target.closest('.roster-cell');
-                if (target && target !== draggedItem) {
-                    // Simple visual feedback is enough; complex class adding can be slow
-                }
-            });
-
-            rosterTableContainer.addEventListener('drop', e => {
-                e.preventDefault();
-                const target = e.target.closest('.roster-cell');
-                if (target && target !== draggedItem) {
-                    const sourceDate = draggedItem.dataset.date;
-                    const sourceRole = draggedItem.dataset.role;
-                    const targetDate = target.dataset.date;
-                    const targetRole = target.dataset.role;
-
-                    const sourceName = state.roster[sourceDate]?.[sourceRole] || '';
-                    const targetName = state.roster[targetDate]?.[targetRole] || '';
-
-                    // Validation for source dropping into target's date
-                    if (sourceDate !== targetDate && isDuplicateInDate(sourceName, targetDate)) {
-                        showNotification(`${sourceName} is already assigned on ${targetDate}.`, true);
-                        return;
-                    }
-                    // Validation for target swapping into source's date
-                     if (sourceDate !== targetDate && isDuplicateInDate(targetName, sourceDate)) {
-                        showNotification(`${targetName} is already assigned on ${sourceDate}.`, true);
-                        return;
-                    }
-                    
-                    recordHistory();
-                    if (!state.roster[sourceDate]) state.roster[sourceDate] = {};
-                    state.roster[sourceDate][sourceRole] = targetName;
-                    
-                    if (!state.roster[targetDate]) state.roster[targetDate] = {};
-                    state.roster[targetDate][targetRole] = sourceName;
-                    
-                    saveState();
-                    renderRosterTable();
+                const targetRow = e.target.closest('.role-row');
+                if (targetRow && draggedRoleRow && targetRow !== draggedRoleRow) {
+                    document.querySelectorAll('.drag-over-row').forEach(el => el.classList.remove('drag-over-row'));
+                    targetRow.classList.add('drag-over-row');
                 }
             });
             
-            // --- TEAM MODAL MANAGEMENT ---
+            rosterTableContainer.addEventListener('drop', e => {
+                e.preventDefault();
+                const targetRow = e.target.closest('.role-row');
+                if (targetRow && draggedRoleRow) {
+                    const sourceRole = draggedRoleRow.dataset.roleRow;
+                    const targetRole = targetRow.dataset.roleRow;
+
+                    const sourceIndex = state.roles.indexOf(sourceRole);
+                    const targetIndex = state.roles.indexOf(targetRole);
+
+                    if (sourceIndex > -1 && targetIndex > -1) {
+                        // Remove source role and insert at target position
+                        const [removed] = state.roles.splice(sourceIndex, 1);
+                        state.roles.splice(targetIndex, 0, removed);
+
+                        saveState();
+                        renderRosterTable();
+                    }
+                }
+                document.querySelectorAll('.drag-over-row').forEach(el => el.classList.remove('drag-over-row'));
+                if (draggedRoleRow) draggedRoleRow.classList.remove('dragging');
+            });
+
+
+            // --- MODAL EVENT HANDLERS ---
+            teamModalButton.addEventListener('click', () => teamModal.showModal());
+            closeModalButton.addEventListener('click', () => teamModal.close());
+
             addMemberForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const name = memberNameInput.value.trim();
                 const availability = memberAvailabilityInput.value.trim();
                 const notes = memberNotesInput.value.trim();
                 const selectedRoles = Array.from(document.querySelectorAll('input[name="roles"]:checked')).map(cb => cb.value);
-
+                
                 if(name) {
                     if (state.editingMemberId) {
                         const member = state.teamMembers.find(m => m.id === state.editingMemberId);
@@ -998,28 +1127,38 @@
                             member.roles = selectedRoles;
                             member.availability = availability;
                             member.notes = notes;
+                            member.unavailableDates = [...currentUnavailableDates];
                         }
                     } else {
-                        state.teamMembers.push({ id: Date.now(), name, roles: selectedRoles, availability, notes });
+                        // Check for duplicate name before adding
+                        if(state.teamMembers.some(m => m.name.toLowerCase() === name.toLowerCase())){
+                            showNotification(`${name} already exists in the team.`, true);
+                            return;
+                        }
+                        state.teamMembers.push({ id: Date.now(), name, roles: selectedRoles, availability, notes, unavailableDates: [...currentUnavailableDates] });
                     }
                     resetMemberForm();
                     saveState();
                     renderTeamMembers();
+                    renderVolunteerDropdown();
+                    displayAssignmentsForVolunteer('');
                 }
             });
 
             teamMembersList.addEventListener('click', (e) => {
-                const editButton = e.target.closest('[data-edit-id]');
-                const deleteButton = e.target.closest('[data-delete-id]');
+                const editButton = e.target.closest('[data-member-id-edit]');
+                const deleteButton = e.target.closest('[data-member-id-delete]');
 
                 if (editButton) {
-                    const memberId = parseFloat(editButton.dataset.editId);
+                    const memberId = parseFloat(editButton.dataset.memberIdEdit);
                     const member = state.teamMembers.find(m => m.id === memberId);
                     if (member) {
                         state.editingMemberId = memberId;
                         memberNameInput.value = member.name;
                         memberAvailabilityInput.value = member.availability || '';
                         memberNotesInput.value = member.notes || '';
+                        currentUnavailableDates = member.unavailableDates ? [...member.unavailableDates] : [];
+                        renderUnavailableDatesList();
                         document.querySelectorAll('input[name="roles"]').forEach(cb => {
                             cb.checked = member.roles.includes(cb.value);
                         });
@@ -1027,128 +1166,102 @@
                         cancelEditButton.classList.remove('hidden');
                         memberNameInput.focus();
                     }
-                }
-
-                if (deleteButton) {
-                    const memberId = parseFloat(deleteButton.dataset.deleteId);
-                    state.teamMembers = state.teamMembers.filter(m => m.id !== memberId);
+                } else if (deleteButton) {
+                    const memberIdToDelete = parseFloat(deleteButton.dataset.memberIdDelete);
+                    state.teamMembers = state.teamMembers.filter(m => m.id !== memberIdToDelete);
                     saveState();
                     renderTeamMembers();
+                    renderVolunteerDropdown();
                 }
             });
 
-            cancelEditButton.addEventListener('click', resetMemberForm);
+             cancelEditButton.addEventListener('click', resetMemberForm);
 
-            clearAllMembersButton.addEventListener('click', () => {
-                if (clearAllMembersButton.textContent === 'Are you sure?') {
+            clearAllMembersButton.addEventListener('click', (e) => {
+                const button = e.currentTarget;
+                if(button.dataset.confirm) {
                     state.teamMembers = [];
+                    state.roster = {}; // Also clear roster as members are gone
                     saveState();
                     renderTeamMembers();
-                    clearAllMembersButton.textContent = 'Clear All';
-                    clearAllMembersButton.classList.remove('bg-red-500', 'text-white');
-                    clearAllMembersButton.classList.add('bg-red-100', 'text-red-700');
+                    renderVolunteerDropdown();
+                    renderRosterTable();
+                    button.textContent = 'Clear All';
+                    delete button.dataset.confirm;
                 } else {
-                    clearAllMembersButton.textContent = 'Are you sure?';
-                    clearAllMembersButton.classList.remove('bg-red-100', 'text-red-700');
-                    clearAllMembersButton.classList.add('bg-red-500', 'text-white');
+                    button.textContent = 'Are you sure?';
+                    button.dataset.confirm = 'true';
                     setTimeout(() => {
-                        if (clearAllMembersButton.textContent === 'Are you sure?') {
-                             clearAllMembersButton.textContent = 'Clear All';
-                             clearAllMembersButton.classList.remove('bg-red-500', 'text-white');
-                             clearAllMembersButton.classList.add('bg-red-100', 'text-red-700');
-                        }
+                         if(button.dataset.confirm) {
+                           button.textContent = 'Clear All';
+                           delete button.dataset.confirm;
+                         }
                     }, 3000);
                 }
             });
-
-            downloadPdfButton.addEventListener('click', () => {
-                if (state.roles.length === 0 || state.dates.length === 0) {
-                    showNotification('Roster is empty. Cannot download PDF.', true);
-                    return;
-                }
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF({ orientation: 'landscape' });
-                doc.text("Team Roster", 14, 16);
-                doc.setFontSize(10);
-                doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 22);
-                doc.autoTable({
-                    html: '#roster-table-container table',
-                    startY: 28, theme: 'grid',
-                    styles: { cellPadding: 2, fontSize: 8 },
-                    headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' }
-                });
-                doc.save('roster.pdf');
-            });
             
-            const deleteRole = (roleToDelete) => {
-                recordHistory();
-                state.roles = state.roles.filter(r => r !== roleToDelete);
-                state.teamMembers.forEach(member => {
-                    member.roles = member.roles.filter(r => r !== roleToDelete);
-                });
-                Object.keys(state.roster).forEach(date => {
-                    if(state.roster[date]) delete state.roster[date][roleToDelete];
-                });
-                saveState();
-                renderAll();
-            };
-
-            const editRole = (oldRoleName, newRoleName) => {
-                 if (!newRoleName || newRoleName === oldRoleName) return;
-                if (state.roles.includes(newRoleName)) {
-                    showNotification(`Role "${newRoleName}" already exists.`, true);
-                    return;
-                }
-                recordHistory();
-                state.roles = state.roles.map(r => r === oldRoleName ? newRoleName : r);
-                state.teamMembers.forEach(member => {
-                    member.roles = member.roles.map(r => r === oldRoleName ? newRoleName : r);
-                });
-                Object.keys(state.roster).forEach(date => {
-                    if (state.roster[date] && state.roster[date][oldRoleName]) {
-                        state.roster[date][newRoleName] = state.roster[date][oldRoleName];
-                        delete state.roster[date][oldRoleName];
-                    }
-                });
-                saveState();
-                renderAll();
-            };
-
-            modalAddRoleForm.addEventListener('submit', e => {
-                e.preventDefault();
-                const roleName = modalRoleNameInput.value.trim();
-                if (roleName && !state.roles.includes(roleName)) {
-                    state.roles.push(roleName);
-                    state.roles.sort();
+            modalAddRoleForm.addEventListener('submit', (e) => {
+                 e.preventDefault();
+                 const newRole = modalRoleNameInput.value.trim();
+                 if (newRole && !state.roles.includes(newRole)) {
+                    state.roles.push(newRole);
+                    updateState(state);
                     modalRoleNameInput.value = '';
-                    saveState();
-                    renderAll();
-                } else if (state.roles.includes(roleName)) {
-                    showNotification(`Role "${roleName}" already exists.`, true);
-                }
+                 }
             });
 
-            modalRolesList.addEventListener('click', e => {
-                const deleteButton = e.target.closest('[data-delete-modal-role]');
-                const editButton = e.target.closest('[data-edit-role]');
-
-                if(deleteButton) {
-                    deleteRole(deleteButton.dataset.deleteModalRole);
-                }
-
-                if(editButton) {
-                    const roleToEdit = editButton.dataset.editRole;
-                    const newRoleName = prompt(`Enter new name for "${roleToEdit}":`, roleToEdit);
-                    if (newRoleName) {
-                        editRole(roleToEdit, newRoleName.trim());
-                    }
+            modalRolesList.addEventListener('click', (e) => {
+                const deleteBtn = e.target.closest('[data-role-to-delete]');
+                if (deleteBtn) {
+                    const roleToDelete = deleteBtn.dataset.roleToDelete;
+                    state.roles = state.roles.filter(r => r !== roleToDelete);
+                    // Also remove from roster and team members
+                    state.teamMembers.forEach(m => {
+                        m.roles = m.roles.filter(r => r !== roleToDelete);
+                    });
+                    Object.keys(state.roster).forEach(date => {
+                        delete state.roster[date][roleToDelete];
+                    });
+                    updateState(state);
                 }
             });
             
+            modalRolesList.addEventListener('change', (e) => {
+                const input = e.target.closest('.modal-role-input');
+                if (input) {
+                    const originalRole = input.dataset.originalRole;
+                    const newRole = input.value.trim();
+                    if (newRole && newRole !== originalRole && !state.roles.includes(newRole)) {
+                        const roleIndex = state.roles.indexOf(originalRole);
+                        if (roleIndex > -1) {
+                            state.roles[roleIndex] = newRole;
+                             // Update team members
+                            state.teamMembers.forEach(member => {
+                                const memberRoleIndex = member.roles.indexOf(originalRole);
+                                if (memberRoleIndex > -1) {
+                                    member.roles[memberRoleIndex] = newRole;
+                                }
+                            });
+                             // Update roster
+                             Object.keys(state.roster).forEach(date => {
+                                if (state.roster[date][originalRole]) {
+                                    state.roster[date][newRole] = state.roster[date][originalRole];
+                                    delete state.roster[date][originalRole];
+                                }
+                            });
+                            updateState(state);
+                        }
+                    } else if (!newRole || newRole !== originalRole) {
+                        input.value = originalRole; // Revert if empty or duplicate
+                    }
+                }
+            });
+
+
             downloadTemplateButton.addEventListener('click', () => {
-                const csvContent = "data:text/csv;charset=utf-8,"
+                const csvContent = "data:text/csv;charset=utf-8," 
                     + "name,roles,availability,notes\n"
-                    + "John Doe,Main Camera;Photography,Weekends Only,Great eye for shots\n";
+                    + "John Doe,Main Camera;Photography,Weekends,Good with lighting";
                 const encodedUri = encodeURI(csvContent);
                 const link = document.createElement("a");
                 link.setAttribute("href", encodedUri);
@@ -1163,43 +1276,113 @@
                 if (!file) return;
 
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = (e) => {
                     const text = e.target.result;
-                    const lines = text.split('\n').slice(1);
-                    let newMembersCount = 0;
-
+                    const lines = text.split('\n').slice(1); // Skip header
+                    let addedCount = 0;
                     lines.forEach(line => {
                         line = line.trim();
-                        if(!line) return;
-                        
-                        const [name, rolesStr, availability, notes] = line.split(',');
-                        if (name && name.trim()) {
-                            const roles = rolesStr ? rolesStr.split(';').map(r => r.trim()).filter(r => state.roles.includes(r)) : [];
-                            state.teamMembers.push({
-                                id: Date.now() + Math.random(),
-                                name: name.trim(),
-                                roles: roles,
-                                availability: availability ? availability.trim() : '',
-                                notes: notes ? notes.trim() : ''
-                            });
-                            newMembersCount++;
+                        if (line) {
+                            const [name, roles, availability, notes] = line.split(',');
+                            if (name && !state.teamMembers.some(m => m.name === name)) {
+                                const rolesArray = roles ? roles.split(';').map(r => r.trim()) : [];
+                                // Add any new roles from CSV to master list
+                                rolesArray.forEach(r => {
+                                    if(r && !state.roles.includes(r)) state.roles.push(r);
+                                });
+                                state.teamMembers.push({
+                                    id: Date.now() + Math.random(),
+                                    name: name.trim(),
+                                    roles: rolesArray,
+                                    availability: availability ? availability.trim() : '',
+                                    notes: notes ? notes.trim() : '',
+                                    unavailableDates: []
+                                });
+                                addedCount++;
+                            }
                         }
                     });
-
-                    if (newMembersCount > 0) {
+                    if (addedCount > 0) {
                         saveState();
-                        renderTeamMembers();
-                        showNotification(`${newMembersCount} new members imported successfully!`);
+                        renderAll();
+                        showNotification(`Successfully imported ${addedCount} new members.`);
                     } else {
-                        showNotification('Could not import any new members. Check file format.', true);
+                        showNotification('No new members were imported. They may already exist.', true);
                     }
-                    csvFileInput.value = '';
                 };
                 reader.readAsText(file);
+                csvFileInput.value = ''; // Reset for re-upload
             });
 
-            teamModalButton.addEventListener('click', () => teamModal.showModal());
-            closeModalButton.addEventListener('click', () => teamModal.close());
+            const showNotification = (message, isError = false) => {
+                const notification = document.createElement('div');
+                notification.textContent = message;
+                notification.className = `p-4 rounded-lg shadow-lg text-white text-sm font-semibold transition-all duration-300 transform translate-x-full ${isError ? 'bg-red-500' : 'bg-green-500'}`;
+                notificationArea.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.classList.remove('translate-x-full');
+                }, 100);
+
+                setTimeout(() => {
+                    notification.classList.add('translate-x-full');
+                    notification.addEventListener('transitionend', () => notification.remove());
+                }, 3000);
+            };
+
+            downloadPdfButton.addEventListener('click', () => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'landscape' });
+                
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(16);
+                doc.text('Volunteer Roster', 14, 20);
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(10);
+                doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 26);
+
+
+                const sortedDates = [...state.dates].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const head = [['Role', ...sortedDates.map(d => {
+                    const dateObj = new Date(d.date + 'T00:00:00');
+                    return `${dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}\n${d.event || dateObj.toLocaleDateString('en-US', { weekday: 'short' })}`;
+                })]];
+                const body = state.roles.map(role => {
+                    return [role, ...sortedDates.map(d => (state.roster[d.date] && state.roster[d.date][role]) || '')];
+                });
+
+                doc.autoTable({
+                    startY: 32,
+                    head: head,
+                    body: body,
+                    theme: 'grid',
+                    styles: {
+                        font: 'helvetica',
+                        fontSize: 9,
+                        cellPadding: 2,
+                    },
+                     headStyles: {
+                        fillColor: [45, 55, 72], // A darker gray
+                        textColor: [255, 255, 255],
+                        fontStyle: 'bold',
+                        halign: 'center'
+                    },
+                    alternateRowStyles: {
+                        fillColor: [241, 245, 249] // slate-100
+                    },
+                     columnStyles: {
+                        0: { // "Role" column
+                            fontStyle: 'bold',
+                            cellWidth: 40,
+                        }
+                    }
+                });
+
+                doc.save('roster.pdf');
+            });
+
+
             teamModal.addEventListener('click', (e) => {
                 if (e.target === teamModal) teamModal.close();
             });
@@ -1207,13 +1390,14 @@
             function resetMemberForm() {
                 state.editingMemberId = null;
                 addMemberForm.reset();
+                currentUnavailableDates = [];
+                renderUnavailableDatesList();
                 addMemberForm.querySelector('button[type="submit"]').textContent = 'Add Member';
                 cancelEditButton.classList.add('hidden');
             }
 
             // --- INITIALIZATION ---
             loadState();
-            dateInput.min = new Date().toISOString().split("T")[0];
             renderAll();
             updateUndoRedoButtons();
         });
