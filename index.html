@@ -87,6 +87,15 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     Team
                 </button>
+                 <button id="save-session-button" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2" title="Save Session to a file">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    Save
+                </button>
+                <label for="load-session-input" class="cursor-pointer px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2" title="Load Session from a file">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    Load
+                    <input type="file" id="load-session-input" class="hidden" accept=".json">
+                </label>
                 <button id="download-pdf-button" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     PDF
@@ -137,6 +146,23 @@
                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     </button>
                 </form>
+            </div>
+        </div>
+
+        <!-- Volunteer Schedule Lookup -->
+        <div id="volunteer-lookup-section" class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 hidden">
+            <h3 class="font-semibold mb-3 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+                Volunteer Schedule
+            </h3>
+            <div class="flex flex-wrap items-center gap-4">
+                <label for="volunteer-select" class="font-medium text-sm">Select Volunteer:</label>
+                <select id="volunteer-select" class="flex-grow w-full md:w-auto px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">-- Choose a name --</option>
+                </select>
+            </div>
+            <div id="volunteer-assignments-display" class="mt-4 space-y-2 max-h-48 overflow-y-auto pr-2">
+                <!-- Assignments will be displayed here -->
             </div>
         </div>
 
@@ -272,6 +298,11 @@
             const allowDuplicatesToggle = document.getElementById('allow-duplicates-toggle');
             const undoButton = document.getElementById('undo-button');
             const redoButton = document.getElementById('redo-button');
+            const volunteerLookupSection = document.getElementById('volunteer-lookup-section');
+            const volunteerSelect = document.getElementById('volunteer-select');
+            const volunteerAssignmentsDisplay = document.getElementById('volunteer-assignments-display');
+            const saveSessionButton = document.getElementById('save-session-button');
+            const loadSessionInput = document.getElementById('load-session-input');
             
             // Modal Role Elements
             const modalAddRoleForm = document.getElementById('modal-add-role-form');
@@ -387,6 +418,7 @@
                 renderTeamMembers();
                 updateTeamMembersHeading();
                 renderModalRolesList();
+                renderVolunteerDropdown();
                 allowDuplicatesToggle.checked = state.settings.allowDuplicates;
             };
 
@@ -443,6 +475,24 @@
                 }
             };
 
+            const renderVolunteerDropdown = () => {
+                if (state.teamMembers.length > 0) {
+                    volunteerLookupSection.classList.remove('hidden');
+                    const currentSelection = volunteerSelect.value;
+                    volunteerSelect.innerHTML = '<option value="">-- Choose a name --</option>';
+                    const sortedMembers = [...state.teamMembers].sort((a, b) => a.name.localeCompare(b.name));
+                    sortedMembers.forEach(member => {
+                        const option = document.createElement('option');
+                        option.value = member.name;
+                        option.textContent = member.name;
+                        volunteerSelect.appendChild(option);
+                    });
+                    volunteerSelect.value = currentSelection;
+                } else {
+                    volunteerLookupSection.classList.add('hidden');
+                }
+            };
+
             const renderModalRolesList = () => {
                 if (state.roles.length === 0) {
                     modalRolesList.innerHTML = `<p class="text-sm text-slate-500">No roles added yet.</p>`;
@@ -480,6 +530,8 @@
                 if(state.teamMembers.length === 0) {
                     noMembersMessage.classList.remove('hidden');
                     teamMembersList.innerHTML = '';
+                    volunteerSelect.value = ''; // Reset dropdown
+                    displayAssignmentsForVolunteer(''); // Clear display
                 } else {
                     noMembersMessage.classList.add('hidden');
                     teamMembersList.innerHTML = state.teamMembers.map(member => `
@@ -593,6 +645,59 @@
                     e.preventDefault();
                     redo();
                 }
+            });
+ 
+            saveSessionButton.addEventListener('click', () => {
+                const sessionData = JSON.stringify(state, null, 2);
+                const blob = new Blob([sessionData], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                const dateStr = new Date().toISOString().slice(0, 10);
+                link.download = `roster-session-${dateStr}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                showNotification('Session saved successfully!');
+            });
+
+            loadSessionInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const loadedState = JSON.parse(e.target.result);
+                        // Basic validation
+                        if (loadedState.roles && loadedState.dates && loadedState.teamMembers && loadedState.roster) {
+                            state = loadedState;
+                             // Ensure default settings exist if loading an older session file
+                            if (!state.settings) {
+                                state.settings = { allowDuplicates: false };
+                            }
+                            history = [JSON.parse(JSON.stringify(state.roster))];
+                            historyIndex = 0;
+                            saveState();
+                            renderAll();
+                            updateUndoRedoButtons();
+                            showNotification('Session loaded successfully!');
+                        } else {
+                            throw new Error('Invalid session file format.');
+                        }
+                    } catch (error) {
+                        showNotification('Could not load session file. It may be corrupted.', true);
+                        console.error("Error loading session:", error);
+                    } finally {
+                        loadSessionInput.value = ''; // Reset input
+                    }
+                };
+                reader.readAsText(file);
+            });
+
+            volunteerSelect.addEventListener('change', () => {
+                displayAssignmentsForVolunteer(volunteerSelect.value);
             });
 
 
@@ -712,6 +817,53 @@
                         cell.focus();
                     }
                 });
+            };
+
+            const displayAssignmentsForVolunteer = (volunteerName) => {
+                volunteerAssignmentsDisplay.innerHTML = '';
+                if (!volunteerName) {
+                    return;
+                }
+
+                const assignments = [];
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Normalize to the start of the day
+
+                const sortedDates = [...state.dates].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                sortedDates.forEach(d => {
+                    const rosterDate = new Date(d.date + 'T00:00:00');
+                    if (rosterDate >= today) { // Check for upcoming dates
+                        const dayAssignments = state.roster[d.date] || {};
+                        Object.keys(dayAssignments).forEach(role => {
+                            if (dayAssignments[role] === volunteerName) {
+                                assignments.push({
+                                    date: d.date,
+                                    event: d.event,
+                                    role: role
+                                });
+                            }
+                        });
+                    }
+                });
+
+                if (assignments.length === 0) {
+                    volunteerAssignmentsDisplay.innerHTML = `<p class="text-sm text-slate-500 p-2">No upcoming assignments for ${volunteerName}.</p>`;
+                } else {
+                    const assignmentsHTML = assignments.map(a => {
+                        const dateObj = new Date(a.date + 'T00:00:00');
+                        const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                        return `
+                            <div class="flex justify-between items-center bg-slate-100 p-3 rounded-md text-sm">
+                                <div>
+                                    <p class="font-semibold text-slate-800">${a.role}</p>
+                                    <p class="text-slate-500">${formattedDate} - (${a.event})</p>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    volunteerAssignmentsDisplay.innerHTML = assignmentsHTML;
+                }
             };
 
             rosterTableContainer.addEventListener('click', e => {
@@ -1068,5 +1220,3 @@
     </script>
 </body>
 </html>
-
-
