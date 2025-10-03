@@ -38,7 +38,7 @@
         }
 
         /* --- New styles for interactivity --- */
-        .roster-cell:focus {
+        .roster-cell:focus-within, .roster-cell.is-editing {
             outline: 2px solid #3b82f6; /* blue-500 */
             outline-offset: -1px;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
@@ -67,11 +67,16 @@
         .toggle-checkbox:checked + .toggle-label {
             background-color: #2563eb;
         }
+
+        .swapped {
+            background-color: #fee2e2 !important; /* red-100 */
+            transition: background-color 0.1s ease-in-out;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
 
-    <div id="app" class="p-4 md:p-8 max-w-7xl mx-auto">
+    <div id="app" class="p-4 md:p-8 max-w-full mx-auto">
         <!-- Header Section -->
         <header class="flex flex-wrap justify-between items-center gap-4 mb-6">
             <div>
@@ -106,7 +111,7 @@
                 </button>
                 <button id="generate-roster-button" class="px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm text-sm font-semibold hover:bg-green-700 transition-colors flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 2 2.1 2.1"/><path d="M11.5 9.5 14 12l6-6"/><path d="m2 2 7.586 7.586"/><path d="M11.5 9.5 7.586 5.586"/></svg>
-                    Generate
+                    Generate All
                 </button>
                  <button id="clear-roster-button" class="px-4 py-2 bg-red-500 text-white rounded-lg shadow-sm text-sm font-semibold hover:bg-red-600 transition-colors flex items-center gap-2" title="Clear Roster Assignments">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
@@ -116,7 +121,7 @@
         </header>
 
         <!-- Control Panels Section -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
             <!-- Main Controls -->
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
                  <h3 class="font-semibold flex items-center gap-2">
@@ -150,6 +155,25 @@
                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     </button>
                 </form>
+            </div>
+             <!-- Not Available Panel -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                 <h3 class="font-semibold mb-2 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" x2="17" y1="8" y2="14"/><line x1="17" x2="23" y1="8" y2="14"/></svg>
+                     Mark Member as Unavailable
+                </h3>
+                <form id="add-unavailable-form" class="flex flex-col sm:flex-row gap-2">
+                    <input type="date" id="unavailable-date-input" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <select id="unavailable-member-select" class="flex-grow w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <option value="">Select member...</option>
+                    </select>
+                    <button type="submit" class="p-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors aspect-square flex items-center justify-center" title="Add Unavailable Member">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                </form>
+                <div id="unavailable-list-display" class="mt-3 text-sm space-y-1 max-h-24 overflow-y-auto">
+                    <!-- List of unavailable members for selected date -->
+                </div>
             </div>
         </div>
 
@@ -199,7 +223,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     </button>
                 </form>
-                <div id="modal-roles-list" class="space-y-2 max-h-32 overflow-y-auto pr-2">
+                <div id="modal-roles-list" class="space-y-3 max-h-48 overflow-y-auto pr-2">
                     <!-- Roles will be dynamically inserted here -->
                 </div>
             </div>
@@ -252,7 +276,7 @@
                     </div>
                     <!-- Not Available Dates Section -->
                     <div class="mt-4 md:col-span-2">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Not Available On</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Not Available On (Personal)</label>
                         <div class="flex gap-2">
                             <input type="date" id="member-unavailable-date" class="flex-grow w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <button type="button" id="add-unavailable-date-button" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300">Add</button>
@@ -322,6 +346,12 @@
             const saveSessionButton = document.getElementById('save-session-button');
             const loadSessionInput = document.getElementById('load-session-input');
             
+            // New Feature DOM Elements
+            const addUnavailableForm = document.getElementById('add-unavailable-form');
+            const unavailableDateInputMain = document.getElementById('unavailable-date-input');
+            const unavailableMemberSelect = document.getElementById('unavailable-member-select');
+            const unavailableListDisplay = document.getElementById('unavailable-list-display');
+
             // Modal Role Elements
             const modalAddRoleForm = document.getElementById('modal-add-role-form');
             const modalRoleNameInput = document.getElementById('modal-role-name-input');
@@ -351,42 +381,47 @@
                 } else {
                     // Default state if nothing is saved
                     state = {
-                        roles: ['Main Camera', 'Second Camera', 'ProPresenter', 'Live Monitoring', 'Camera Switch', 'Photography', 'Reels'],
+                        roles: [
+                            { name: 'Main Camera', isMultiple: false, count: 1 },
+                            { name: 'Second Camera', isMultiple: false, count: 1 },
+                            { name: 'ProPresenter', isMultiple: false, count: 1 },
+                            { name: 'Live Monitoring', isMultiple: false, count: 1 },
+                        ],
                         dates: [],
                         teamMembers: [],
                         roster: {},
+                        unavailability: {},
                         settings: {
                             allowDuplicates: false
                         }
                     };
                 }
-                 // Ensure all members have the unavailableDates property for backward compatibility
+                 // Backwards compatibility checks
                 state.teamMembers.forEach(m => {
-                    if (!m.unavailableDates) {
-                        m.unavailableDates = [];
+                    if (!m.unavailableDates) m.unavailableDates = [];
+                });
+                if (!state.unavailability) state.unavailability = {};
+                state.roles.forEach(r => {
+                    if (typeof r === 'string') { // Old format
+                       const index = state.roles.indexOf(r);
+                       state.roles[index] = { name: r, isMultiple: false, count: 1 };
                     }
                 });
-                 // Initialize history with the loaded state
+
                 history = [JSON.parse(JSON.stringify(state.roster))];
                 historyIndex = 0;
             };
 
             // --- HISTORY (UNDO/REDO) MANAGEMENT ---
             const pushToHistory = () => {
-                // Clear future states
                 if (historyIndex < history.length - 1) {
                     history = history.slice(0, historyIndex + 1);
                 }
-                
-                // Add new state
                 const currentRosterState = JSON.parse(JSON.stringify(state.roster));
                 history.push(currentRosterState);
-
-                // Limit history size
                 if (history.length > MAX_HISTORY) {
                     history.shift();
                 }
-                
                 historyIndex = history.length - 1;
                 updateUndoRedoButtons();
             };
@@ -425,6 +460,8 @@
                 updateTeamMembersHeading();
                 renderModalRolesList();
                 renderVolunteerDropdown();
+                renderUnavailableMemberDropdown();
+                renderUnavailableListForDate(unavailableDateInputMain.value);
                 allowDuplicatesToggle.checked = state.settings.allowDuplicates;
             };
 
@@ -442,70 +479,84 @@
                 let tableHTML = `<table class="w-full text-sm text-left">`;
                 tableHTML += `<thead class="bg-slate-100 text-xs text-slate-600 uppercase"><tr>`;
                 tableHTML += `<th class="px-6 py-3 sticky left-0 bg-slate-100 z-10 w-48">
-                                <div class="flex items-center justify-between">
-                                    Role
-                                </div>
+                                <div class="flex items-center justify-between">Role</div>
                              </th>`;
 
                 sortedDates.forEach(d => {
                     const dateObj = new Date(d.date + 'T00:00:00');
                     const day = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
                     const date = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    tableHTML += `<th scope="col" class="px-6 py-3 group" data-date-header="${d.date}" data-event-header="${d.event}">
+                    const unavailableOnDate = state.unavailability[d.date] || [];
+                    tableHTML += `<th scope="col" class="px-6 py-3 group relative" data-date-header="${d.date}" data-event-header="${d.event}">
                         <div class="flex items-center justify-between">
-                             <div>
+                            <div>
                                 <p class="font-bold">${date}</p>
                                 <p class="font-normal text-slate-500">${d.event || day}</p>
                             </div>
-                            <button data-date-to-delete="${d.date}" class="p-1 text-slate-400 hover:text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Date">
-                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                            </button>
+                            <div class="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button data-generate-for-date="${d.date}" class="p-1 text-slate-400 hover:text-green-500 hover:bg-green-100 rounded-full" title="Generate for this date only">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                                </button>
+                                <button data-date-to-delete="${d.date}" class="p-1 text-slate-400 hover:text-red-500 hover:bg-red-100 rounded-full" title="Delete Date">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            </div>
                         </div>
+                        ${unavailableOnDate.length > 0 ? `<div class="text-xxs text-amber-600 font-semibold absolute bottom-1 left-1 bg-amber-100 px-1 rounded-sm cursor-pointer" title="${unavailableOnDate.join(', ')}">${unavailableOnDate.length} unavailable</div>` : ''}
                     </th>`;
                 });
                 tableHTML += `</tr></thead><tbody id="roster-tbody">`;
 
                 state.roles.forEach(role => {
-                    tableHTML += `<tr class="role-row bg-white border-b hover:bg-slate-50 group" draggable="true" data-role-row="${role}">`;
-                    tableHTML += `<th scope="row" class="px-6 py-4 font-medium text-slate-900 sticky left-0 bg-white group-hover:bg-slate-50 z-10 w-48 cursor-grab">
+                    tableHTML += `<tr class="role-row bg-white border-b hover:bg-slate-50 group" data-role-row="${role.name}">`;
+                    tableHTML += `<th scope="row" class="px-6 py-4 font-medium text-slate-900 sticky left-0 bg-white group-hover:bg-slate-50 z-10 w-48 cursor-grab" draggable="true">
                                     <div class="flex items-center justify-between">
-                                        <span>${role}</span>
-                                        <button data-role-to-delete="${role}" class="p-1 text-slate-400 hover:text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Role">
+                                        <span>${role.name} ${role.isMultiple ? `(${role.count})` : ''}</span>
+                                        <button data-role-to-delete="${role.name}" class="p-1 text-slate-400 hover:text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Role">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                                         </button>
                                     </div>
                                  </th>`;
                     sortedDates.forEach(d => {
-                        const assignedMember = (state.roster[d.date] && state.roster[d.date][role]) || '';
-                        tableHTML += `<td class="roster-cell px-6 py-4 cursor-pointer" data-date="${d.date}" data-role="${role}" draggable="true" tabindex="0">${assignedMember}</td>`;
+                        const assignedMembers = (state.roster[d.date] && state.roster[d.date][role.name]) || [];
+                        tableHTML += `<td class="roster-cell px-6 py-4" data-date="${d.date}" data-role="${role.name}" draggable="true" tabindex="0">
+                            <div class="h-full w-full">${assignedMembers.join(', ')}</div>
+                        </td>`;
                     });
                     tableHTML += `</tr>`;
                 });
 
                 tableHTML += `</tbody></table>`;
-                if (rosterTableContainer.innerHTML === tableHTML) {
-                    console.log("Roster is the same, not re-rendering table.");
-                } else {
-                    rosterTableContainer.innerHTML = tableHTML;
-                }
+                rosterTableContainer.innerHTML = tableHTML;
             };
             
             const renderVolunteerDropdown = () => {
                 if (state.teamMembers.length > 0) {
                     volunteerLookupSection.classList.remove('hidden');
                     const currentSelection = volunteerSelect.value;
-                    volunteerSelect.innerHTML = '<option value="">-- Choose a name --</option>';
                     const sortedMembers = [...state.teamMembers].sort((a, b) => a.name.localeCompare(b.name));
+                    
+                    volunteerSelect.innerHTML = '<option value="">-- Choose a name --</option>';
                     sortedMembers.forEach(member => {
-                        const option = document.createElement('option');
-                        option.value = member.name;
-                        option.textContent = member.name;
-                        volunteerSelect.appendChild(option);
+                        volunteerSelect.innerHTML += `<option value="${member.name}">${member.name}</option>`;
                     });
+
                     volunteerSelect.value = currentSelection;
                 } else {
                     volunteerLookupSection.classList.add('hidden');
                 }
+            };
+            
+            const renderUnavailableMemberDropdown = () => {
+                 if (state.teamMembers.length > 0) {
+                    const sortedMembers = [...state.teamMembers].sort((a, b) => a.name.localeCompare(b.name));
+                    unavailableMemberSelect.innerHTML = '<option value="">Select member...</option>';
+                     sortedMembers.forEach(member => {
+                        unavailableMemberSelect.innerHTML += `<option value="${member.name}">${member.name}</option>`;
+                    });
+                 } else {
+                    unavailableMemberSelect.innerHTML = '<option value="">Add a member first...</option>';
+                 }
             };
 
             const renderModalRolesList = () => {
@@ -514,11 +565,31 @@
                     return;
                 }
                 modalRolesList.innerHTML = state.roles.map(role => `
-                    <div class="flex items-center justify-between bg-slate-100 p-2 rounded-md">
-                        <input type="text" value="${role}" data-original-role="${role}" class="modal-role-input flex-grow bg-transparent text-sm font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 rounded-sm px-1">
-                        <button data-role-to-delete="${role}" class="ml-2 p-1 text-slate-500 hover:text-red-600 rounded-full hover:bg-red-100">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                        </button>
+                    <div class="bg-slate-100 p-3 rounded-md">
+                        <div class="flex items-center justify-between">
+                            <input type="text" value="${role.name}" data-original-role-name="${role.name}" class="modal-role-input flex-grow bg-transparent text-sm font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 rounded-sm px-1">
+                            <button data-role-to-delete="${role.name}" class="ml-2 p-1 text-slate-500 hover:text-red-600 rounded-full hover:bg-red-100">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-4 mt-2 text-sm">
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" data-role-multiple-toggle="${role.name}" ${role.isMultiple ? 'checked' : ''} class="rounded border-slate-300 text-blue-600 shadow-sm focus:ring-blue-500">
+                                Allow Multiple
+                            </label>
+                            <div class="${role.isMultiple ? '' : 'hidden'}">
+                                <label>
+                                    Count:
+                                    <select data-role-count-select="${role.name}" class="ml-1 rounded-md border-slate-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-sm py-1">
+                                        <option value="1" ${role.count == 1 ? 'selected' : ''}>1</option>
+                                        <option value="2" ${role.count == 2 ? 'selected' : ''}>2</option>
+                                        <option value="3" ${role.count == 3 ? 'selected' : ''}>3</option>
+                                        <option value="4" ${role.count == 4 ? 'selected' : ''}>4</option>
+                                        <option value="5" ${role.count == 5 ? 'selected' : ''}>5</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 `).join('');
             };
@@ -527,8 +598,8 @@
                 if (state.roles.length > 0) {
                     rolesCheckboxesContainer.innerHTML = state.roles.map(role => `
                         <label class="flex items-center space-x-2 cursor-pointer">
-                            <input type="checkbox" name="roles" value="${role}" class="rounded border-slate-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-offset-0 focus:ring-blue-200 focus:ring-opacity-50">
-                            <span>${role}</span>
+                            <input type="checkbox" name="roles" value="${role.name}" class="rounded border-slate-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-offset-0 focus:ring-blue-200 focus:ring-opacity-50">
+                            <span>${role.name}</span>
                         </label>
                     `).join('');
                 } else {
@@ -540,8 +611,8 @@
                 if(state.teamMembers.length === 0) {
                     noMembersMessage.classList.remove('hidden');
                     teamMembersList.innerHTML = '';
-                    volunteerSelect.value = ''; // Reset dropdown
-                    displayAssignmentsForVolunteer(''); // Clear display
+                    volunteerSelect.value = '';
+                    displayAssignmentsForVolunteer('');
                 } else {
                     noMembersMessage.classList.add('hidden');
                     teamMembersList.innerHTML = state.teamMembers.map(member => `
@@ -556,7 +627,7 @@
                             </div>
                             <p class="font-semibold text-slate-800 pr-12">${member.name}</p>
                             <div class="flex flex-wrap gap-1 mt-2">
-                                ${member.roles.map(role => `<span class="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${role}</span>`).join('')}
+                                ${member.roles.map(roleName => `<span class="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${roleName}</span>`).join('')}
                             </div>
                             <div class="mt-2 space-y-1 text-sm text-slate-600">
                                 <p><strong class="font-medium">Availability:</strong> ${member.availability || 'Not set'}</p>
@@ -589,16 +660,33 @@
                 `).join('');
             };
 
+            const renderUnavailableListForDate = (date) => {
+                if (!date) {
+                    unavailableListDisplay.innerHTML = '<p class="text-slate-400">Select a date to see who is unavailable.</p>';
+                    return;
+                }
+                const unavailableOnDate = state.unavailability[date] || [];
+                if (unavailableOnDate.length === 0) {
+                    unavailableListDisplay.innerHTML = `<p class="text-slate-400">Everyone is available on this date.</p>`;
+                } else {
+                    unavailableListDisplay.innerHTML = '<p class="font-semibold mb-1 text-slate-600">Unavailable on this date:</p>' + unavailableOnDate.map(name => `
+                        <span class="flex items-center justify-between text-xs font-medium bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
+                            ${name}
+                            <button type="button" data-remove-unavailable-name="${name}" data-remove-unavailable-date="${date}" class="ml-2 font-bold text-amber-600 hover:text-amber-800">&times;</button>
+                        </span>
+                    `).join('');
+                }
+            };
+
+
             // --- EVENT HANDLERS (GENERAL) ---
             addRoleForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const newRole = roleNameInput.value.trim();
-                if (newRole && !state.roles.includes(newRole)) {
-                    state.roles.push(newRole);
+                const newRoleName = roleNameInput.value.trim();
+                if (newRoleName && !state.roles.some(r => r.name === newRoleName)) {
+                    state.roles.push({ name: newRoleName, isMultiple: false, count: 1 });
                     saveState();
-                    renderRosterTable();
-                    renderRolesCheckboxes();
-                    renderModalRolesList();
+                    renderAll();
                     roleNameInput.value = '';
                 }
             });
@@ -616,42 +704,40 @@
                 }
             });
 
-            generateRosterButton.addEventListener('click', () => {
-                state.roster = {}; // Clear existing roster assignments
-                const sortedDates = [...state.dates].sort((a, b) => new Date(a.date) - new Date(b.date));
+            const generateForDate = (date) => {
+                if (!state.roster[date]) state.roster[date] = {};
 
-                sortedDates.forEach(d => {
-                    state.roster[d.date] = {};
-                    const assignedToday = new Set();
-                    
-                    const rolesWithMemberCounts = state.roles.map(role => {
-                         const count = state.teamMembers.filter(member => 
-                            member.roles.includes(role) &&
-                            (!member.unavailableDates || !member.unavailableDates.includes(d.date))
-                        ).length;
-                        return { role, count };
-                    });
-                    
-                    const prioritizedRoles = rolesWithMemberCounts.sort((a, b) => a.count - b.count).map(item => item.role);
+                const dateUnavailable = state.unavailability[date] || [];
+                const dayAssignments = {}; // Tracks who is assigned to what on this day to respect allowDuplicates toggle
 
-                    prioritizedRoles.forEach(role => {
-                        const availableMembers = state.teamMembers.filter(
-                            member => member.roles.includes(role) && 
-                            (!member.unavailableDates || !member.unavailableDates.includes(d.date)) &&
-                            (state.settings.allowDuplicates || !assignedToday.has(member.id))
-                        );
-                        if (availableMembers.length > 0) {
-                            const chosenMember = availableMembers[Math.floor(Math.random() * availableMembers.length)];
-                            state.roster[d.date][role] = chosenMember.name;
-                            if (!state.settings.allowDuplicates) {
-                                assignedToday.add(chosenMember.id);
-                            }
+                state.roles.forEach(role => {
+                    let assignedToRole = [];
+                    const availableMembers = state.teamMembers.filter(member => 
+                        member.roles.includes(role.name) && 
+                        !member.unavailableDates.includes(date) &&
+                        !dateUnavailable.includes(member.name) &&
+                        (state.settings.allowDuplicates || !dayAssignments[member.name])
+                    );
+
+                    let shuffledMembers = [...availableMembers].sort(() => 0.5 - Math.random());
+                    
+                    for (let i = 0; i < role.count && i < shuffledMembers.length; i++) {
+                        const memberToAssign = shuffledMembers[i];
+                        assignedToRole.push(memberToAssign.name);
+                        if (!state.settings.allowDuplicates) {
+                            dayAssignments[memberToAssign.name] = true;
                         }
-                    });
+                    }
+                    state.roster[date][role.name] = assignedToRole;
                 });
+                
                 pushToHistory();
                 saveState();
                 renderRosterTable();
+            };
+
+            generateRosterButton.addEventListener('click', () => {
+                state.dates.forEach(d => generateForDate(d.date));
             });
 
             clearRosterButton.addEventListener('click', () => {
@@ -670,27 +756,20 @@
             redoButton.addEventListener('click', redo);
 
             document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'z') {
-                    e.preventDefault();
-                    undo();
-                }
-                if (e.ctrlKey && e.key === 'y') {
-                    e.preventDefault();
-                    redo();
-                }
+                if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+                if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
             });
  
             saveSessionButton.addEventListener('click', () => {
                 const sessionData = JSON.stringify(state, null, 2);
                 const blob = new Blob([sessionData], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                const dateStr = new Date().toISOString().slice(0, 10);
-                link.download = `roster-session-${dateStr}.json`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `roster-session-${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 showNotification('Session saved successfully!');
             });
@@ -698,24 +777,23 @@
             loadSessionInput.addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (!file) return;
-
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     try {
                         const loadedState = JSON.parse(e.target.result);
-                        // Basic validation
                         if (loadedState.roles && loadedState.dates && loadedState.teamMembers && loadedState.roster) {
                             state = loadedState;
-                             // Ensure default settings exist if loading an older session file
-                            if (!state.settings) {
-                                state.settings = { allowDuplicates: false };
-                            }
-                             // Ensure all members have the unavailableDates property for backward compatibility
-                            state.teamMembers.forEach(m => {
-                                if (!m.unavailableDates) {
-                                    m.unavailableDates = [];
-                                }
+                            if (!state.settings) state.settings = { allowDuplicates: false };
+                             state.teamMembers.forEach(m => {
+                                if (!m.unavailableDates) m.unavailableDates = [];
                             });
+                             if (!state.unavailability) state.unavailability = {};
+                             state.roles.forEach(r => {
+                                if (typeof r === 'string') {
+                                   const index = state.roles.indexOf(r);
+                                   state.roles[index] = { name: r, isMultiple: false, count: 1 };
+                                }
+                             });
                             history = [JSON.parse(JSON.stringify(state.roster))];
                             historyIndex = 0;
                             saveState();
@@ -727,13 +805,56 @@
                         }
                     } catch (error) {
                         showNotification('Could not load session file. It may be corrupted.', true);
-                        console.error("Error loading session:", error);
                     } finally {
-                        loadSessionInput.value = ''; // Reset input
+                        loadSessionInput.value = '';
                     }
                 };
                 reader.readAsText(file);
             });
+
+            addUnavailableForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const date = unavailableDateInputMain.value;
+                const memberName = unavailableMemberSelect.value;
+                if (!date || !memberName) return;
+
+                if (!state.unavailability[date]) {
+                    state.unavailability[date] = [];
+                }
+                if (!state.unavailability[date].includes(memberName)) {
+                    state.unavailability[date].push(memberName);
+                    saveState();
+                    renderRosterTable();
+                    renderUnavailableListForDate(date);
+                    showNotification(`${memberName} marked as unavailable on ${date}.`);
+                } else {
+                    showNotification(`${memberName} is already unavailable on ${date}.`, true);
+                }
+                unavailableMemberSelect.value = ''; 
+            });
+
+            unavailableDateInputMain.addEventListener('input', () => {
+                renderUnavailableListForDate(unavailableDateInputMain.value);
+            });
+
+            unavailableListDisplay.addEventListener('click', e => {
+                const removeBtn = e.target.closest('[data-remove-unavailable-name]');
+                if (removeBtn) {
+                    const nameToRemove = removeBtn.dataset.removeUnavailableName;
+                    const date = removeBtn.dataset.removeUnavailableDate;
+                    if (state.unavailability[date]) {
+                        state.unavailability[date] = state.unavailability[date].filter(n => n !== nameToRemove);
+                        if (state.unavailability[date].length === 0) {
+                            delete state.unavailability[date];
+                        }
+                        saveState();
+                        renderRosterTable();
+                        renderUnavailableListForDate(date);
+                        showNotification(`${nameToRemove} is now available on ${date}.`);
+                    }
+                }
+            });
+
 
             volunteerSelect.addEventListener('change', () => {
                 displayAssignmentsForVolunteer(volunteerSelect.value);
@@ -761,121 +882,96 @@
 
             // --- ROSTER TABLE INTERACTIVITY ---
             const makeHeaderEditable = (th) => {
-                if (th.querySelector('input')) return; // Already editing
+                if (th.querySelector('input')) return;
                 const originalDate = th.dataset.dateHeader;
                 const originalEvent = th.dataset.eventHeader;
-                th.innerHTML = `
-                    <div class="p-1">
+                th.innerHTML = `<div class="p-1">
                         <input type="date" value="${originalDate}" class="block w-full text-sm p-1 border border-slate-300 rounded-md mb-1">
                         <input type="text" value="${originalEvent}" class="block w-full text-sm p-1 border border-slate-300 rounded-md">
                     </div>`;
-                
                 const dateInput = th.querySelector('input[type="date"]');
                 const eventInput = th.querySelector('input[type="text"]');
                 dateInput.focus();
-
                 const saveChanges = () => {
                     const newDate = dateInput.value;
                     const newEvent = eventInput.value;
-
-                    // Check if date already exists
                     if (newDate !== originalDate && state.dates.some(d => d.date === newDate)) {
                          showNotification(`Date ${newDate} already exists.`, true);
-                         renderRosterTable(); // Revert
-                         return;
+                         renderRosterTable(); return;
                     }
-
                     const dateIndex = state.dates.findIndex(d => d.date === originalDate);
                     if (dateIndex !== -1) {
                         state.dates[dateIndex].date = newDate;
                         state.dates[dateIndex].event = newEvent;
-
-                        // Also update the roster object key
                         if (newDate !== originalDate && state.roster[originalDate]) {
                             state.roster[newDate] = state.roster[originalDate];
                             delete state.roster[originalDate];
+                        }
+                         if (newDate !== originalDate && state.unavailability[originalDate]) {
+                            state.unavailability[newDate] = state.unavailability[originalDate];
+                            delete state.unavailability[originalDate];
                         }
                         pushToHistory();
                         saveState();
                         renderRosterTable();
                     }
                 };
-
                 th.addEventListener('keydown', e => {
-                    if (e.key === 'Enter') {
-                        saveChanges();
-                    } else if (e.key === 'Escape') {
-                        renderRosterTable(); // Revert
-                    }
+                    if (e.key === 'Enter') saveChanges();
+                    else if (e.key === 'Escape') renderRosterTable();
                 });
-
-                th.addEventListener('blur', (e) => {
-                    if (!th.contains(e.relatedTarget)) {
-                        saveChanges();
-                    }
+                th.addEventListener('blur', e => {
+                    if (!th.contains(e.relatedTarget)) saveChanges();
                 }, true);
             };
 
             const displayAssignmentsForVolunteer = (volunteerName) => {
                 volunteerAssignmentsDisplay.innerHTML = '';
-                if (!volunteerName) {
-                    return;
-                }
-
+                if (!volunteerName) return;
                 const assignments = [];
                 const today = new Date();
-                today.setHours(0, 0, 0, 0); // Normalize to the start of the day
-
+                today.setHours(0, 0, 0, 0);
                 const sortedDates = [...state.dates].sort((a, b) => new Date(a.date) - new Date(b.date));
-
                 sortedDates.forEach(d => {
                     const rosterDate = new Date(d.date + 'T00:00:00');
-                    if (rosterDate >= today) { // Check for upcoming dates
+                    if (rosterDate >= today) {
                         const dayAssignments = state.roster[d.date] || {};
-                        Object.keys(dayAssignments).forEach(role => {
-                            if (dayAssignments[role] === volunteerName) {
-                                assignments.push({
-                                    date: d.date,
-                                    event: d.event,
-                                    role: role
-                                });
+                        Object.keys(dayAssignments).forEach(roleName => {
+                            if (dayAssignments[roleName] && dayAssignments[roleName].includes(volunteerName)) {
+                                assignments.push({ date: d.date, event: d.event, role: roleName });
                             }
                         });
                     }
                 });
-
                 if (assignments.length === 0) {
                     volunteerAssignmentsDisplay.innerHTML = `<p class="text-sm text-slate-500 p-2">No upcoming assignments for ${volunteerName}.</p>`;
                 } else {
-                    const assignmentsHTML = assignments.map(a => {
+                    volunteerAssignmentsDisplay.innerHTML = assignments.map(a => {
                         const dateObj = new Date(a.date + 'T00:00:00');
                         const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-                        return `
-                            <div class="flex justify-between items-center bg-slate-100 p-3 rounded-md text-sm">
+                        return `<div class="flex justify-between items-center bg-slate-100 p-3 rounded-md text-sm">
                                 <div>
                                     <p class="font-semibold text-slate-800">${a.role}</p>
                                     <p class="text-slate-500">${formattedDate} - (${a.event || 'Event'})</p>
                                 </div>
-                            </div>
-                        `;
+                            </div>`;
                     }).join('');
-                    volunteerAssignmentsDisplay.innerHTML = assignmentsHTML;
                 }
             };
 
             rosterTableContainer.addEventListener('click', e => {
                 const roleDeleteBtn = e.target.closest('[data-role-to-delete]');
                 const dateDeleteBtn = e.target.closest('[data-date-to-delete]');
+                const genDateBtn = e.target.closest('[data-generate-for-date]');
 
                 if (roleDeleteBtn) {
-                    const roleToDelete = roleDeleteBtn.dataset.roleToDelete;
-                    state.roles = state.roles.filter(r => r !== roleToDelete);
-                    // Also remove from roster and team members
+                    const roleNameToDelete = roleDeleteBtn.dataset.roleToDelete;
+                    state.roles = state.roles.filter(r => r.name !== roleNameToDelete);
                     state.teamMembers.forEach(m => {
-                        m.roles = m.roles.filter(r => r !== roleToDelete);
+                        m.roles = m.roles.filter(rName => rName !== roleNameToDelete);
                     });
                     Object.keys(state.roster).forEach(date => {
-                        delete state.roster[date][roleToDelete];
+                        delete state.roster[date][roleNameToDelete];
                     });
                     pushToHistory();
                     updateState(state);
@@ -884,228 +980,210 @@
                     const dateToDelete = dateDeleteBtn.dataset.dateToDelete;
                     state.dates = state.dates.filter(d => d.date !== dateToDelete);
                     delete state.roster[dateToDelete];
+                    delete state.unavailability[dateToDelete];
                     pushToHistory();
                     updateState(state);
+                }
+                if (genDateBtn) {
+                    generateForDate(genDateBtn.dataset.generateForDate);
+                }
+                
+                const cell = e.target.closest('.roster-cell');
+                if (cell) {
+                    makeCellEditable(cell);
                 }
             });
             
             rosterTableContainer.addEventListener('dblclick', e => {
                  const header = e.target.closest('[data-date-header]');
-                 if (header) {
-                     makeHeaderEditable(header);
-                 }
+                 if (header) makeHeaderEditable(header);
             });
-
-            rosterTableContainer.addEventListener('keydown', (e) => {
-                const activeCell = document.activeElement;
-                if (!activeCell || !activeCell.classList.contains('roster-cell')) return;
-
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    makeCellEditable(activeCell);
-                } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                    e.preventDefault();
-                    moveFocus(activeCell, e.key);
-                }
-            });
-
-            const moveFocus = (currentCell, direction) => {
-                const allCells = Array.from(rosterTableContainer.querySelectorAll('.roster-cell'));
-                const currentIndex = allCells.indexOf(currentCell);
-                const numCols = state.dates.length;
-                let nextIndex;
-
-                switch (direction) {
-                    case 'ArrowUp':
-                        nextIndex = currentIndex - numCols;
-                        break;
-                    case 'ArrowDown':
-                        nextIndex = currentIndex + numCols;
-                        break;
-                    case 'ArrowLeft':
-                        nextIndex = currentIndex - 1;
-                        break;
-                    case 'ArrowRight':
-                        nextIndex = currentIndex + 1;
-                        break;
-                }
-
-                if (nextIndex >= 0 && nextIndex < allCells.length) {
-                    allCells[nextIndex].focus();
-                }
-            };
             
             const makeCellEditable = (cell) => {
-                if (cell.querySelector('input')) return; // Already editing
-                const originalValue = cell.textContent;
-                cell.innerHTML = `<input type="text" value="${originalValue}" class="w-full h-full bg-blue-50 border-0 focus:ring-1 focus:ring-blue-500 rounded-md p-1 -m-1">`;
-                const input = cell.querySelector('input');
-                input.focus();
-                input.select();
+                if (cell.querySelector('select, div.editor')) return; // Already editing
+                
+                cell.classList.add('is-editing');
+                const date = cell.dataset.date;
+                const roleName = cell.dataset.role;
+                const role = state.roles.find(r => r.name === roleName);
+                if (!role) return;
+
+                const dateUnavailable = state.unavailability[date] || [];
+                const eligibleMembers = state.teamMembers.filter(m =>
+                    m.roles.includes(roleName) &&
+                    !m.unavailableDates.includes(date) &&
+                    !dateUnavailable.includes(m.name)
+                );
+                
+                const currentAssignments = state.roster[date]?.[roleName] || [];
+                
+                const innerDiv = cell.querySelector('div');
+                innerDiv.innerHTML = '';
+                
+                const select = document.createElement('select');
+                select.className = 'w-full h-full bg-blue-50 border-0 focus:ring-1 focus:ring-blue-500 rounded-md p-1 -m-1';
+                select.innerHTML = `<option value="">-- Assign Member --</option>` + eligibleMembers.map(m =>
+                    `<option value="${m.name}" ${currentAssignments.includes(m.name) ? 'disabled' : ''}>${m.name}</option>`
+                ).join('');
+                
+                innerDiv.appendChild(select);
+                select.focus();
 
                 const saveChange = () => {
-                     const newValue = input.value.trim();
-                     const date = cell.dataset.date;
-                     const role = cell.dataset.role;
-
-                     // Validation
-                     if (!state.settings.allowDuplicates && newValue) {
-                        const dayAssignments = state.roster[date] || {};
-                        for (const r in dayAssignments) {
-                            if (dayAssignments[r] === newValue && r !== role) {
-                                showNotification(`${newValue} is already assigned a role on this day.`, true);
-                                cell.textContent = originalValue; // Revert
-                                return;
-                            }
-                        }
-                    }
-
-                     cell.textContent = newValue;
+                     const selectedName = select.value;
+                     if (!selectedName) {
+                        renderRosterTable(); return;
+                     }
                      if (!state.roster[date]) state.roster[date] = {};
-                     state.roster[date][role] = newValue;
+                     if (!state.roster[date][roleName]) state.roster[date][roleName] = [];
+                     
+                     let assignments = state.roster[date][roleName];
+
+                     if (role.isMultiple) {
+                        if (assignments.length < role.count && !assignments.includes(selectedName)) {
+                            assignments.push(selectedName);
+                        } else {
+                            showNotification(`This role only allows ${role.count} member(s).`, true);
+                        }
+                     } else {
+                        assignments = [selectedName];
+                     }
+
+                     state.roster[date][roleName] = assignments;
                      pushToHistory();
                      saveState();
+                     renderRosterTable();
                 };
 
-                input.addEventListener('blur', saveChange);
-                input.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        saveChange();
-                        cell.focus();
-                    } else if (e.key === 'Escape') {
-                        cell.innerHTML = originalValue;
-                        cell.focus();
+                select.addEventListener('change', saveChange);
+                select.addEventListener('blur', () => renderRosterTable());
+            };
+            
+            // --- Consolidated Drag and Drop Logic ---
+            let dragSrcCell = null;
+            let draggedRoleRow = null;
+
+            const handleDragStart = (e) => {
+                // Prioritize cell drag
+                if (e.target.classList.contains('roster-cell')) {
+                    dragSrcCell = e.target;
+                    e.target.classList.add('dragging');
+                    return;
+                }
+                // Then check for row drag handle
+                const rowHeader = e.target.closest('th[scope="row"]');
+                if (rowHeader) {
+                     const row = rowHeader.closest('.role-row');
+                     if (row) {
+                        draggedRoleRow = row;
+                        setTimeout(() => row.classList.add('dragging'), 0);
+                     }
+                }
+            };
+            
+            const handleDragOver = (e) => {
+                e.preventDefault();
+                if (dragSrcCell) {
+                    const targetCell = e.target.closest('.roster-cell');
+                    if(targetCell) targetCell.classList.add('drag-over');
+                } else if (draggedRoleRow) {
+                    const targetRow = e.target.closest('.role-row');
+                    if (targetRow && targetRow !== draggedRoleRow) {
+                        document.querySelectorAll('.drag-over-row').forEach(el => el.classList.remove('drag-over-row'));
+                        targetRow.classList.add('drag-over-row');
                     }
-                });
+                }
             };
 
-            rosterTableContainer.addEventListener('click', e => {
-                const cell = e.target.closest('.roster-cell');
-                if (cell) makeCellEditable(cell);
-            });
-            
-            // --- CELL Drag and Drop Logic ---
-            let dragSrcCell = null;
-            rosterTableContainer.addEventListener('dragstart', e => {
-                if (e.target.classList.contains('roster-cell')) {
-                    e.target.classList.add('dragging');
-                    dragSrcCell = e.target;
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.dataTransfer.setData('text/html', e.target.innerHTML);
-                }
-            });
-            rosterTableContainer.addEventListener('dragover', e => {
-                 if (e.target.classList.contains('roster-cell')) {
-                    e.preventDefault();
-                    e.target.classList.add('drag-over');
-                 }
-            });
-            rosterTableContainer.addEventListener('dragleave', e => {
-                if (e.target.classList.contains('roster-cell')) e.target.classList.remove('drag-over');
-            });
-            rosterTableContainer.addEventListener('drop', e => {
-                 if (e.target.classList.contains('roster-cell')) {
-                    e.stopPropagation();
-                    if (dragSrcCell !== e.target) {
-                        const srcDate = dragSrcCell.dataset.date;
-                        const srcRole = dragSrcCell.dataset.role;
-                        const destDate = e.target.dataset.date;
-                        const destRole = e.target.dataset.role;
-                        const srcVal = state.roster[srcDate]?.[srcRole] || '';
-                        const destVal = state.roster[destDate]?.[destRole] || '';
+            const handleDragLeave = (e) => {
+                 const targetCell = e.target.closest('.roster-cell');
+                 if(targetCell) targetCell.classList.remove('drag-over');
+            };
 
-                        // Validation for destination
-                        if (!state.settings.allowDuplicates && srcVal) {
-                            const destDayAssignments = state.roster[destDate] || {};
-                            for (const r in destDayAssignments) {
-                                if (destDayAssignments[r] === srcVal && r !== destRole) {
-                                    showNotification(`${srcVal} is already assigned a role on ${destDate}. Swap aborted.`, true);
-                                    return;
-                                }
-                            }
-                        }
-                        // Validation for source (if swapping)
-                        if (!state.settings.allowDuplicates && destVal) {
-                            const srcDayAssignments = state.roster[srcDate] || {};
-                            for (const r in srcDayAssignments) {
-                                if (srcDayAssignments[r] === destVal && r !== srcRole) {
-                                    showNotification(`${destVal} is already assigned a role on ${srcDate}. Swap aborted.`, true);
-                                    return;
-                                }
-                            }
-                        }
+            const handleDrop = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                // Handle cell drop
+                if (dragSrcCell) {
+                    const dropTargetCell = e.target.closest('.roster-cell');
+                    if (dropTargetCell && dragSrcCell !== dropTargetCell) {
                         
-                        // Perform swap
+                        const srcDate = dragSrcCell.dataset.date, srcRoleName = dragSrcCell.dataset.role;
+                        const destDate = dropTargetCell.dataset.date, destRoleName = dropTargetCell.dataset.role;
+
+                        const srcAssignments = state.roster[srcDate]?.[srcRoleName] || [];
+                        const destAssignments = state.roster[destDate]?.[destRoleName] || [];
+
+                        // Validation
+                        const destDateUnavailable = state.unavailability[destDate] || [];
+                        if (srcAssignments.some(name => destDateUnavailable.includes(name))) {
+                            showNotification(`Cannot move: a member is unavailable on ${destDate}.`, true);
+                            return;
+                        }
+                        const srcDateUnavailable = state.unavailability[srcDate] || [];
+                        if (destAssignments.some(name => srcDateUnavailable.includes(name))) {
+                            showNotification(`Cannot swap: a member is unavailable on ${srcDate}.`, true);
+                            return;
+                        }
+
+                        // Swap logic
                         if (!state.roster[srcDate]) state.roster[srcDate] = {};
                         if (!state.roster[destDate]) state.roster[destDate] = {};
-                        state.roster[srcDate][srcRole] = destVal;
-                        state.roster[destDate][destRole] = srcVal;
+                        state.roster[srcDate][srcRoleName] = destAssignments;
+                        state.roster[destDate][destRoleName] = srcAssignments;
 
                         pushToHistory();
                         saveState();
                         renderRosterTable();
+
+                        // Highlight
+                        const newSrcCell = document.querySelector(`.roster-cell[data-date="${srcDate}"][data-role="${srcRoleName}"]`);
+                        const newDestCell = document.querySelector(`.roster-cell[data-date="${destDate}"][data-role="${destRoleName}"]`);
+                        if(newSrcCell && newDestCell) {
+                            newSrcCell.classList.add('swapped');
+                            newDestCell.classList.add('swapped');
+                            setTimeout(() => {
+                                newSrcCell.classList.remove('swapped');
+                                newDestCell.classList.remove('swapped');
+                            }, 1200);
+                        }
                     }
-                 }
-            });
-            rosterTableContainer.addEventListener('dragend', e => {
-                if(e.target.classList.contains('roster-cell')){
-                    e.target.classList.remove('dragging');
-                    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-                }
-            });
-
-            // --- ROW Drag and Drop Logic ---
-            let draggedRoleRow = null;
-            rosterTableContainer.addEventListener('dragstart', e => {
-                const row = e.target.closest('.role-row');
-                if (row) {
-                    draggedRoleRow = row;
-                    setTimeout(() => {
-                        row.classList.add('dragging');
-                    }, 0);
-                }
-            });
-
-            rosterTableContainer.addEventListener('dragend', e => {
-                const row = e.target.closest('.role-row');
-                if (row) {
-                    row.classList.remove('dragging');
-                    document.querySelectorAll('.drag-over-row').forEach(el => el.classList.remove('drag-over-row'));
-                }
-            });
-            
-            rosterTableContainer.addEventListener('dragover', e => {
-                e.preventDefault();
-                const targetRow = e.target.closest('.role-row');
-                if (targetRow && draggedRoleRow && targetRow !== draggedRoleRow) {
-                    document.querySelectorAll('.drag-over-row').forEach(el => el.classList.remove('drag-over-row'));
-                    targetRow.classList.add('drag-over-row');
-                }
-            });
-            
-            rosterTableContainer.addEventListener('drop', e => {
-                e.preventDefault();
-                const targetRow = e.target.closest('.role-row');
-                if (targetRow && draggedRoleRow) {
-                    const sourceRole = draggedRoleRow.dataset.roleRow;
-                    const targetRole = targetRow.dataset.roleRow;
-
-                    const sourceIndex = state.roles.indexOf(sourceRole);
-                    const targetIndex = state.roles.indexOf(targetRole);
-
-                    if (sourceIndex > -1 && targetIndex > -1) {
-                        // Remove source role and insert at target position
-                        const [removed] = state.roles.splice(sourceIndex, 1);
-                        state.roles.splice(targetIndex, 0, removed);
-
-                        saveState();
-                        renderRosterTable();
+                } 
+                // Handle row drop
+                else if (draggedRoleRow) {
+                    const targetRow = e.target.closest('.role-row');
+                    if (targetRow && draggedRoleRow !== targetRow) {
+                        const sourceRoleName = draggedRoleRow.dataset.roleRow;
+                        const targetRoleName = targetRow.dataset.roleRow;
+                        const sourceIndex = state.roles.findIndex(r => r.name === sourceRoleName);
+                        const targetIndex = state.roles.findIndex(r => r.name === targetRoleName);
+                        if (sourceIndex > -1 && targetIndex > -1) {
+                            const [removed] = state.roles.splice(sourceIndex, 1);
+                            state.roles.splice(targetIndex, 0, removed);
+                            saveState();
+                            renderRosterTable();
+                        }
                     }
                 }
-                document.querySelectorAll('.drag-over-row').forEach(el => el.classList.remove('drag-over-row'));
-                if (draggedRoleRow) draggedRoleRow.classList.remove('dragging');
-            });
+            };
+
+            const handleDragEnd = (e) => {
+                if(dragSrcCell) dragSrcCell.classList.remove('dragging');
+                if(draggedRoleRow) draggedRoleRow.classList.remove('dragging');
+                dragSrcCell = null;
+                draggedRoleRow = null;
+                document.querySelectorAll('.drag-over, .drag-over-row').forEach(el => {
+                    el.classList.remove('drag-over');
+                    el.classList.remove('drag-over-row');
+                });
+            };
+
+            rosterTableContainer.addEventListener('dragstart', handleDragStart);
+            rosterTableContainer.addEventListener('dragover', handleDragOver);
+            rosterTableContainer.addEventListener('dragleave', handleDragLeave);
+            rosterTableContainer.addEventListener('drop', handleDrop);
+            rosterTableContainer.addEventListener('dragend', handleDragEnd);
 
 
             // --- MODAL EVENT HANDLERS ---
@@ -1130,7 +1208,6 @@
                             member.unavailableDates = [...currentUnavailableDates];
                         }
                     } else {
-                        // Check for duplicate name before adding
                         if(state.teamMembers.some(m => m.name.toLowerCase() === name.toLowerCase())){
                             showNotification(`${name} already exists in the team.`, true);
                             return;
@@ -1138,9 +1215,7 @@
                         state.teamMembers.push({ id: Date.now(), name, roles: selectedRoles, availability, notes, unavailableDates: [...currentUnavailableDates] });
                     }
                     resetMemberForm();
-                    saveState();
-                    renderTeamMembers();
-                    renderVolunteerDropdown();
+                    updateState(state);
                     displayAssignmentsForVolunteer('');
                 }
             });
@@ -1169,9 +1244,7 @@
                 } else if (deleteButton) {
                     const memberIdToDelete = parseFloat(deleteButton.dataset.memberIdDelete);
                     state.teamMembers = state.teamMembers.filter(m => m.id !== memberIdToDelete);
-                    saveState();
-                    renderTeamMembers();
-                    renderVolunteerDropdown();
+                    updateState(state);
                 }
             });
 
@@ -1181,11 +1254,8 @@
                 const button = e.currentTarget;
                 if(button.dataset.confirm) {
                     state.teamMembers = [];
-                    state.roster = {}; // Also clear roster as members are gone
-                    saveState();
-                    renderTeamMembers();
-                    renderVolunteerDropdown();
-                    renderRosterTable();
+                    state.roster = {};
+                    updateState(state);
                     button.textContent = 'Clear All';
                     delete button.dataset.confirm;
                 } else {
@@ -1202,9 +1272,9 @@
             
             modalAddRoleForm.addEventListener('submit', (e) => {
                  e.preventDefault();
-                 const newRole = modalRoleNameInput.value.trim();
-                 if (newRole && !state.roles.includes(newRole)) {
-                    state.roles.push(newRole);
+                 const newRoleName = modalRoleNameInput.value.trim();
+                 if (newRoleName && !state.roles.some(r => r.name === newRoleName)) {
+                    state.roles.push({ name: newRoleName, isMultiple: false, count: 1 });
                     updateState(state);
                     modalRoleNameInput.value = '';
                  }
@@ -1213,72 +1283,81 @@
             modalRolesList.addEventListener('click', (e) => {
                 const deleteBtn = e.target.closest('[data-role-to-delete]');
                 if (deleteBtn) {
-                    const roleToDelete = deleteBtn.dataset.roleToDelete;
-                    state.roles = state.roles.filter(r => r !== roleToDelete);
-                    // Also remove from roster and team members
+                    const roleNameToDelete = deleteBtn.dataset.roleToDelete;
+                    state.roles = state.roles.filter(r => r.name !== roleNameToDelete);
                     state.teamMembers.forEach(m => {
-                        m.roles = m.roles.filter(r => r !== roleToDelete);
+                        m.roles = m.roles.filter(rName => rName !== roleNameToDelete);
                     });
                     Object.keys(state.roster).forEach(date => {
-                        delete state.roster[date][roleToDelete];
+                        delete state.roster[date][roleNameToDelete];
                     });
                     updateState(state);
                 }
             });
             
             modalRolesList.addEventListener('change', (e) => {
-                const input = e.target.closest('.modal-role-input');
-                if (input) {
-                    const originalRole = input.dataset.originalRole;
-                    const newRole = input.value.trim();
-                    if (newRole && newRole !== originalRole && !state.roles.includes(newRole)) {
-                        const roleIndex = state.roles.indexOf(originalRole);
-                        if (roleIndex > -1) {
-                            state.roles[roleIndex] = newRole;
-                             // Update team members
-                            state.teamMembers.forEach(member => {
-                                const memberRoleIndex = member.roles.indexOf(originalRole);
-                                if (memberRoleIndex > -1) {
-                                    member.roles[memberRoleIndex] = newRole;
+                const roleInput = e.target.closest('.modal-role-input');
+                const multipleToggle = e.target.closest('[data-role-multiple-toggle]');
+                const countSelect = e.target.closest('[data-role-count-select]');
+
+                if (roleInput) {
+                    const originalRoleName = roleInput.dataset.originalRoleName;
+                    const newRoleName = roleInput.value.trim();
+                    if (newRoleName && newRoleName !== originalRoleName && !state.roles.some(r=>r.name === newRoleName)) {
+                        const role = state.roles.find(r => r.name === originalRoleName);
+                        if (role) {
+                            // Update everywhere
+                            state.teamMembers.forEach(m => {
+                                const roleIndex = m.roles.indexOf(originalRoleName);
+                                if (roleIndex > -1) m.roles[roleIndex] = newRoleName;
+                            });
+                            Object.keys(state.roster).forEach(date => {
+                                if (state.roster[date][originalRoleName]) {
+                                    state.roster[date][newRoleName] = state.roster[date][originalRoleName];
+                                    delete state.roster[date][originalRoleName];
                                 }
                             });
-                             // Update roster
-                             Object.keys(state.roster).forEach(date => {
-                                if (state.roster[date][originalRole]) {
-                                    state.roster[date][newRole] = state.roster[date][originalRole];
-                                    delete state.roster[date][originalRole];
-                                }
-                            });
+                            role.name = newRoleName;
                             updateState(state);
                         }
-                    } else if (!newRole || newRole !== originalRole) {
-                        input.value = originalRole; // Revert if empty or duplicate
+                    } else if (!newRoleName || newRoleName !== originalRoleName) {
+                        roleInput.value = originalRoleName;
+                    }
+                }
+                if (multipleToggle) {
+                    const roleName = multipleToggle.dataset.roleMultipleToggle;
+                    const role = state.roles.find(r => r.name === roleName);
+                    if(role) {
+                        role.isMultiple = multipleToggle.checked;
+                        updateState(state);
+                    }
+                }
+                if (countSelect) {
+                    const roleName = countSelect.dataset.roleCountSelect;
+                    const role = state.roles.find(r => r.name === roleName);
+                    if (role) {
+                        role.count = parseInt(countSelect.value, 10);
+                        saveState();
                     }
                 }
             });
 
-
             downloadTemplateButton.addEventListener('click', () => {
-                const csvContent = "data:text/csv;charset=utf-8," 
-                    + "name,roles,availability,notes\n"
-                    + "John Doe,Main Camera;Photography,Weekends,Good with lighting";
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", "team_template.csv");
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                const csv = "data:text/csv;charset=utf-8," + "name,roles,availability,notes\n" + "John Doe,Main Camera;Photography,Weekends,Good with lighting";
+                const a = document.createElement("a");
+                a.href = encodeURI(csv);
+                a.download = "team_template.csv";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
             });
 
             csvFileInput.addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (!file) return;
-
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const text = e.target.result;
-                    const lines = text.split('\n').slice(1); // Skip header
+                    const lines = e.target.result.split('\n').slice(1);
                     let addedCount = 0;
                     lines.forEach(line => {
                         line = line.trim();
@@ -1286,14 +1365,11 @@
                             const [name, roles, availability, notes] = line.split(',');
                             if (name && !state.teamMembers.some(m => m.name === name)) {
                                 const rolesArray = roles ? roles.split(';').map(r => r.trim()) : [];
-                                // Add any new roles from CSV to master list
                                 rolesArray.forEach(r => {
-                                    if(r && !state.roles.includes(r)) state.roles.push(r);
+                                    if(r && !state.roles.some(role => role.name === r)) state.roles.push({ name: r, isMultiple: false, count: 1 });
                                 });
                                 state.teamMembers.push({
-                                    id: Date.now() + Math.random(),
-                                    name: name.trim(),
-                                    roles: rolesArray,
+                                    id: Date.now() + Math.random(), name: name.trim(), roles: rolesArray,
                                     availability: availability ? availability.trim() : '',
                                     notes: notes ? notes.trim() : '',
                                     unavailableDates: []
@@ -1303,15 +1379,14 @@
                         }
                     });
                     if (addedCount > 0) {
-                        saveState();
-                        renderAll();
+                        updateState(state);
                         showNotification(`Successfully imported ${addedCount} new members.`);
                     } else {
                         showNotification('No new members were imported. They may already exist.', true);
                     }
                 };
                 reader.readAsText(file);
-                csvFileInput.value = ''; // Reset for re-upload
+                csvFileInput.value = '';
             });
 
             const showNotification = (message, isError = false) => {
@@ -1319,11 +1394,7 @@
                 notification.textContent = message;
                 notification.className = `p-4 rounded-lg shadow-lg text-white text-sm font-semibold transition-all duration-300 transform translate-x-full ${isError ? 'bg-red-500' : 'bg-green-500'}`;
                 notificationArea.appendChild(notification);
-                
-                setTimeout(() => {
-                    notification.classList.remove('translate-x-full');
-                }, 100);
-
+                setTimeout(() => notification.classList.remove('translate-x-full'), 100);
                 setTimeout(() => {
                     notification.classList.add('translate-x-full');
                     notification.addEventListener('transitionend', () => notification.remove());
@@ -1333,15 +1404,12 @@
             downloadPdfButton.addEventListener('click', () => {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF({ orientation: 'landscape' });
-                
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(16);
                 doc.text('Volunteer Roster', 14, 20);
-
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(10);
                 doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 26);
-
 
                 const sortedDates = [...state.dates].sort((a, b) => new Date(a.date) - new Date(b.date));
                 const head = [['Role', ...sortedDates.map(d => {
@@ -1349,39 +1417,21 @@
                     return `${dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}\n${d.event || dateObj.toLocaleDateString('en-US', { weekday: 'short' })}`;
                 })]];
                 const body = state.roles.map(role => {
-                    return [role, ...sortedDates.map(d => (state.roster[d.date] && state.roster[d.date][role]) || '')];
+                    return [
+                        `${role.name}${role.isMultiple ? ` (${role.count})` : ''}`, 
+                        ...sortedDates.map(d => (state.roster[d.date]?.[role.name] || []).join(', '))
+                    ];
                 });
 
                 doc.autoTable({
-                    startY: 32,
-                    head: head,
-                    body: body,
-                    theme: 'grid',
-                    styles: {
-                        font: 'helvetica',
-                        fontSize: 9,
-                        cellPadding: 2,
-                    },
-                     headStyles: {
-                        fillColor: [45, 55, 72], // A darker gray
-                        textColor: [255, 255, 255],
-                        fontStyle: 'bold',
-                        halign: 'center'
-                    },
-                    alternateRowStyles: {
-                        fillColor: [241, 245, 249] // slate-100
-                    },
-                     columnStyles: {
-                        0: { // "Role" column
-                            fontStyle: 'bold',
-                            cellWidth: 40,
-                        }
-                    }
+                    startY: 32, head: head, body: body, theme: 'grid',
+                    styles: { font: 'helvetica', fontSize: 9, cellPadding: 2 },
+                     headStyles: { fillColor: [45, 55, 72], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+                    alternateRowStyles: { fillColor: [241, 245, 249] },
+                     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 } }
                 });
-
                 doc.save('roster.pdf');
             });
-
 
             teamModal.addEventListener('click', (e) => {
                 if (e.target === teamModal) teamModal.close();
@@ -1404,3 +1454,4 @@
     </script>
 </body>
 </html>
+
