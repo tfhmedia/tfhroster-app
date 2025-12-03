@@ -11,128 +11,67 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-        /* Custom scrollbar for better aesthetics */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-        /* Style for the dialog backdrop */
-        dialog::backdrop {
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(2px);
-        }
-
-        /* --- New styles for interactivity --- */
-        .roster-cell:focus-within, .roster-cell.is-editing {
-            outline: 2px solid #3b82f6; /* blue-500 */
-            outline-offset: -1px;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
-            border-radius: 6px;
-        }
-
-        /* Drag-and-drop styles */
-        .dragging {
-            opacity: 0.5;
-            background: #e0e7ff; /* indigo-100 */
-        }
-        .drag-over {
-            background-color: #dbeafe !important; /* blue-100 */
-            border: 2px dashed #60a5fa; /* blue-400 */
-        }
-        
-        .role-row.drag-over-row {
-            box-shadow: inset 0 2px 0 0 #3b82f6;
-        }
-        
-        /* Toggle switch */
-        .toggle-checkbox:checked {
-            right: 0;
-            border-color: #2563eb;
-        }
-        .toggle-checkbox:checked + .toggle-label {
-            background-color: #2563eb;
-        }
-
-        .swapped {
-            background-color: #fee2e2 !important; /* red-100 */
-            transition: background-color 0.1s ease-in-out;
-        }
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        dialog::backdrop { background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(2px); }
+        .assignment-wrapper.dragging { opacity: 0.5; transform: scale(0.95); }
+        .assignment-wrapper.drag-over { background-color: #dbeafe; border-radius: 0.375rem; box-shadow: 0 0 0 2px #3b82f6; }
+        .roster-cell.drag-over-cell { background-color: #f0f9ff; box-shadow: inset 0 0 0 2px #60a5fa; }
+        .role-row.drag-over-row { box-shadow: inset 0 2px 0 0 #3b82f6; }
+        .swapped { animation: highlight 1s ease-out; }
+        @keyframes highlight { 0% { background-color: #fee2e2; } 100% { background-color: transparent; } }
+        .toggle-checkbox:checked { right: 0; border-color: #2563eb; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #2563eb; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
 
     <div id="app" class="p-4 md:p-8 max-w-full mx-auto">
-        <!-- Header Section -->
+        <!-- Header -->
         <header class="flex flex-wrap justify-between items-center gap-4 mb-6">
             <div>
                 <h1 class="text-2xl md:text-3xl font-bold text-slate-900">Interactive Roster Generator</h1>
                 <p class="text-slate-500 mt-1">Drag, drop, and edit your team roster with ease.</p>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
-                 <button id="undo-button" class="px-3 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" title="Undo (Ctrl+Z)" disabled>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l-3 2.7"/></svg>
-                    Undo
+                 <button id="undo-button" class="px-3 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2 disabled:opacity-50" title="Undo (Ctrl+Z)" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l-3 2.7"/></svg> Undo
                 </button>
-                 <button id="redo-button" class="px-3 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" title="Redo (Ctrl+Y)" disabled>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17v-6h6"/><path d="M21 7a9 9 0 0 1-9 9 9 9 0 0 1-6-2.3l3-2.7"/></svg>
-                    Redo
+                 <button id="redo-button" class="px-3 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2 disabled:opacity-50" title="Redo (Ctrl+Y)" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17v-6h6"/><path d="M21 7a9 9 0 0 1-9 9 9 9 0 0 1-6-2.3l3-2.7"/></svg> Redo
                 </button>
                 <button id="team-modal-button" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                    Team
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Team
                 </button>
-                 <button id="save-session-button" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2" title="Save Session to a file">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                    Save
+                 <button id="save-session-button" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> Save
                 </button>
-                <label for="load-session-input" class="cursor-pointer px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2" title="Load Session from a file">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                    Load
+                <label for="load-session-input" class="cursor-pointer px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> Load
                     <input type="file" id="load-session-input" class="hidden" accept=".json">
                 </label>
                 <button id="download-pdf-button" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    PDF
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> PDF
                 </button>
                 <button id="generate-roster-button" class="px-4 py-2 bg-green-600 text-white rounded-lg shadow-sm text-sm font-semibold hover:bg-green-700 transition-colors flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 2 2.1 2.1"/><path d="M11.5 9.5 14 12l6-6"/><path d="m2 2 7.586 7.586"/><path d="M11.5 9.5 7.586 5.586"/></svg>
-                    Generate All
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 2 2.1 2.1"/><path d="M11.5 9.5 14 12l6-6"/><path d="m2 2 7.586 7.586"/><path d="M11.5 9.5 7.586 5.586"/></svg> Generate All
                 </button>
-                 <button id="clear-roster-button" class="px-4 py-2 bg-red-500 text-white rounded-lg shadow-sm text-sm font-semibold hover:bg-red-600 transition-colors flex items-center gap-2" title="Clear Roster Assignments">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                    Clear
+                 <button id="clear-roster-button" class="px-4 py-2 bg-red-500 text-white rounded-lg shadow-sm text-sm font-semibold hover:bg-red-600 transition-colors flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> Clear
                 </button>
             </div>
         </header>
 
-        <!-- Control Panels Section -->
+        <!-- Controls -->
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
-            <!-- Main Controls -->
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
-                 <h3 class="font-semibold flex items-center gap-2">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
-                    Roster Controls
-                 </h3>
+                 <h3 class="font-semibold flex items-center gap-2">Roster Controls</h3>
                 <form id="add-role-form" class="flex gap-2">
                     <input type="text" id="role-name-input" placeholder="Add a new role..." class="flex-grow w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button type="submit" class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors aspect-square flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    </button>
+                    <button type="submit" class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors aspect-square flex items-center justify-center">+</button>
                 </form>
                 <div class="flex items-center justify-between pt-2">
                     <label for="allow-duplicates-toggle" class="text-sm font-medium text-slate-700">Allow duplicate names per day</label>
@@ -141,149 +80,132 @@
                         <label for="allow-duplicates-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
                     </div>
                 </div>
+                 <button id="unavailability-modal-button" class="mt-4 w-full px-4 py-2 bg-amber-500 text-white rounded-lg shadow-sm text-sm font-semibold hover:bg-amber-600 transition-colors flex items-center justify-center gap-2">
+                    Set Unavailability
+                </button>
             </div>
-            <!-- Add Date Panel -->
+            
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <h3 class="font-semibold mb-2 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                     Add Date / Event
-                </h3>
+                <h3 class="font-semibold mb-2 flex items-center gap-2">Add Date / Event</h3>
                 <form id="add-date-form" class="flex flex-col sm:flex-row gap-2">
                     <input type="date" id="date-input" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                     <input type="text" id="event-name-input" placeholder="Event name (e.g., Sunday Service)" class="flex-grow w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button type="submit" class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors aspect-square flex items-center justify-center">
-                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    </button>
+                    <button type="submit" class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors aspect-square flex items-center justify-center">+</button>
                 </form>
             </div>
-             <!-- Not Available Panel -->
+            
+            <!-- Quick Unavailability Panel -->
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                 <h3 class="font-semibold mb-2 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" x2="17" y1="8" y2="14"/><line x1="17" x2="23" y1="8" y2="14"/></svg>
-                     Mark Member as Unavailable
-                </h3>
+                 <h3 class="font-semibold mb-2 flex items-center gap-2">Mark Unavailable (Quick)</h3>
                 <form id="add-unavailable-form" class="flex flex-col sm:flex-row gap-2">
                     <input type="date" id="unavailable-date-input" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                     <select id="unavailable-member-select" class="flex-grow w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                         <option value="">Select member...</option>
                     </select>
-                    <button type="submit" class="p-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors aspect-square flex items-center justify-center" title="Add Unavailable Member">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    </button>
+                    <button type="submit" class="p-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors aspect-square flex items-center justify-center">+</button>
                 </form>
-                <div id="unavailable-list-display" class="mt-3 text-sm space-y-1 max-h-24 overflow-y-auto">
-                    <!-- List of unavailable members for selected date -->
-                </div>
+                <div id="unavailable-list-display" class="mt-3 text-sm space-y-1 max-h-24 overflow-y-auto"></div>
             </div>
         </div>
 
         <!-- Volunteer Schedule Lookup -->
         <div id="volunteer-lookup-section" class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 hidden">
-            <h3 class="font-semibold mb-3 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
-                Volunteer Schedule
-            </h3>
+            <h3 class="font-semibold mb-3 flex items-center gap-2">Volunteer Schedule</h3>
             <div class="flex flex-wrap items-center gap-4">
                 <label for="volunteer-select" class="font-medium text-sm">Select Volunteer:</label>
                 <select id="volunteer-select" class="flex-grow w-full md:w-auto px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">-- Choose a name --</option>
                 </select>
             </div>
-            <div id="volunteer-assignments-display" class="mt-4 space-y-2 max-h-48 overflow-y-auto pr-2">
-                <!-- Assignments will be displayed here -->
-            </div>
+            <div id="volunteer-assignments-display" class="mt-4 space-y-2 max-h-48 overflow-y-auto pr-2"></div>
         </div>
 
-        <!-- Roster Table Section -->
-        <main class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
-            <div id="roster-table-container" class="min-w-[700px]">
-                <!-- Table will be dynamically generated here -->
-            </div>
+        <!-- Roster Table -->
+        <main class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto min-h-[300px]">
+            <div id="roster-table-container" class="min-w-[700px]"></div>
         </main>
     </div>
 
-    <!-- Team Members Management Modal -->
+    <!-- Modals -->
+    <dialog id="unavailability-modal" class="p-0 bg-white rounded-xl shadow-2xl max-w-md w-[95%] backdrop:bg-black/40">
+        <div class="p-6">
+            <h2 class="text-xl font-bold text-slate-900">Mark Member as Unavailable</h2>
+            <div class="my-4">
+                <label for="unavailability-member-select" class="block text-sm font-medium text-slate-700 mb-1">Team Member</label>
+                <select id="unavailability-member-select" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <option value="">Select a member...</option>
+                </select>
+            </div>
+            <div id="calendar-container" class="mt-4">
+                <div class="flex items-center justify-between mb-2">
+                    <button id="prev-month-btn" class="p-2 rounded-full hover:bg-slate-100">&lt;</button>
+                    <h3 id="calendar-month-year" class="font-semibold"></h3>
+                    <button id="next-month-btn" class="p-2 rounded-full hover:bg-slate-100">&gt;</button>
+                </div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1 text-center text-sm"></div>
+            </div>
+            <div class="mt-4">
+                 <h4 class="text-sm font-medium text-slate-700 mb-2">Selected Dates</h4>
+                 <div id="calendar-selected-dates" class="flex flex-wrap gap-2 min-h-[2.5rem] bg-slate-50 p-2 rounded-lg border"></div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button id="unavailability-cancel-btn" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50">Cancel</button>
+                <button id="unavailability-save-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow-sm text-sm font-semibold hover:bg-blue-700">Save</button>
+            </div>
+        </div>
+    </dialog>
+
     <dialog id="team-modal" class="p-0 bg-slate-50 rounded-xl shadow-2xl max-w-3xl w-[95%] backdrop:bg-black/40">
         <div class="p-6 relative">
-            <button id="close-modal-button" class="absolute top-4 right-4 text-slate-500 hover:text-slate-800">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
+            <button id="close-modal-button" class="absolute top-4 right-4 text-slate-500 hover:text-slate-800"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
             <h2 class="text-2xl font-bold text-slate-900">Team Members Management</h2>
-            <p class="text-slate-500 mt-1">Manage members and their roles for automatic roster generation.</p>
-
-            <!-- Notification Area -->
-            <div id="notification-area" class="fixed top-5 right-5 z-50"></div>
-
-            <!-- Manage Roles Section -->
             <div class="bg-white p-4 rounded-lg border border-slate-200 mt-6">
                 <h3 class="font-semibold mb-3">Manage Roles</h3>
                 <form id="modal-add-role-form" class="flex gap-2 mb-3">
                     <input type="text" id="modal-role-name-input" placeholder="Add a new role..." class="flex-grow w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button type="submit" class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors aspect-square flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    </button>
+                    <button type="submit" class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors aspect-square flex items-center justify-center">+</button>
                 </form>
-                <div id="modal-roles-list" class="space-y-3 max-h-48 overflow-y-auto pr-2">
-                    <!-- Roles will be dynamically inserted here -->
-                </div>
+                <div id="modal-roles-list" class="space-y-3 max-h-48 overflow-y-auto pr-2"></div>
             </div>
-
-             <!-- Import from CSV Section -->
             <div class="bg-white p-4 rounded-lg border border-slate-200 mt-4">
-                <h3 class="font-semibold mb-3 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-600"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    Import Team Members from CSV
-                </h3>
+                <h3 class="font-semibold mb-3 flex items-center gap-2">Import Team Members from CSV</h3>
                 <div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                     <div>
-                        <button id="download-template-button" class="px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-200 transition-colors flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                            Download Template
-                        </button>
-                        <p class="text-xs text-slate-500 mt-1">Use this template for correct formatting.</p>
+                        <button id="download-template-button" class="px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-200 transition-colors flex items-center gap-2">Download Template</button>
                     </div>
                     <div class="flex-grow">
-                         <label for="csv-file-input" class="block text-sm font-medium text-slate-700 mb-1">Upload CSV File</label>
                         <input type="file" id="csv-file-input" accept=".csv" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                        <p class="text-xs text-slate-500 mt-1">Format: name,roles (separated by ;),availability,notes</p>
                     </div>
                 </div>
             </div>
-
             <div class="bg-white p-4 rounded-lg border border-slate-200 mt-4">
                 <h3 class="font-semibold mb-3">Add / Edit Team Member</h3>
                 <form id="add-member-form">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="mb-3 md:col-span-2">
-                            <label for="member-name" class="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Name</label>
                             <input type="text" id="member-name" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                         </div>
                         <div class="mb-3 md:col-span-2">
                             <label class="block text-sm font-medium text-slate-700 mb-2">Roles</label>
-                            <div id="roles-checkboxes" class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
-                                <!-- Role checkboxes will be populated here -->
-                                 <p class="text-slate-500 col-span-full">No roles defined. Add roles in the main screen first.</p>
-                            </div>
+                            <div id="roles-checkboxes" class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm"></div>
                         </div>
                          <div class="mb-3">
-                            <label for="member-availability" class="block text-sm font-medium text-slate-700 mb-1">Availability</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Availability</label>
                             <input type="text" id="member-availability" placeholder="e.g., Weekends only" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                         <div class="mb-3">
-                            <label for="member-notes" class="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Notes</label>
                              <input type="text" id="member-notes" placeholder="e.g., Great eye for shots" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
-                    <!-- Not Available Dates Section -->
                     <div class="mt-4 md:col-span-2">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Not Available On (Personal)</label>
                         <div class="flex gap-2">
                             <input type="date" id="member-unavailable-date" class="flex-grow w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <button type="button" id="add-unavailable-date-button" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-300">Add</button>
                         </div>
-                        <div id="unavailable-dates-list" class="mt-2 flex flex-wrap gap-2">
-                            <!-- Unavailable dates will be listed here -->
-                        </div>
+                        <div id="unavailable-dates-list" class="mt-2 flex flex-wrap gap-2"></div>
                     </div>
                     <div class="flex justify-end gap-2 mt-4">
                         <button type="button" id="cancel-edit-button" class="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors hidden">Cancel</button>
@@ -291,646 +213,298 @@
                     </div>
                 </form>
             </div>
-
             <div class="mt-8">
                  <div class="flex justify-between items-center mb-3">
                     <h3 class="font-semibold text-slate-900" id="team-members-heading">Team Members (0)</h3>
                     <button id="clear-all-members-button" class="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-semibold hover:bg-red-200 transition-colors">Clear All</button>
                  </div>
-                 <div id="team-members-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[40vh] overflow-y-auto pr-2">
-                    <!-- Team members list will be populated here -->
-                    <p id="no-members-message" class="text-slate-500 col-span-full">No team members added yet.</p>
-                 </div>
+                 <div id="team-members-list" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[40vh] overflow-y-auto pr-2"></div>
+                 <p id="no-members-message" class="text-slate-500 col-span-full hidden">No team members added yet.</p>
             </div>
         </div>
     </dialog>
 
+    <div id="notification-area" class="fixed top-5 right-5 z-50"></div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // DOM Elements
-            const addRoleForm = document.getElementById('add-role-form');
-            const roleNameInput = document.getElementById('role-name-input');
-            const addDateForm = document.getElementById('add-date-form');
-            const dateInput = document.getElementById('date-input');
-            const eventNameInput = document.getElementById('event-name-input');
-            const rosterTableContainer = document.getElementById('roster-table-container');
-            const teamModal = document.getElementById('team-modal');
-            const teamModalButton = document.getElementById('team-modal-button');
-            const closeModalButton = document.getElementById('close-modal-button');
-            const addMemberForm = document.getElementById('add-member-form');
-            const memberNameInput = document.getElementById('member-name');
-            const memberAvailabilityInput = document.getElementById('member-availability');
-            const memberNotesInput = document.getElementById('member-notes');
-            const unavailableDateInput = document.getElementById('member-unavailable-date');
-            const addUnavailableDateButton = document.getElementById('add-unavailable-date-button');
-            const unavailableDatesList = document.getElementById('unavailable-dates-list');
-            const rolesCheckboxesContainer = document.getElementById('roles-checkboxes');
-            const teamMembersList = document.getElementById('team-members-list');
-            const teamMembersHeading = document.getElementById('team-members-heading');
-            const noMembersMessage = document.getElementById('no-members-message');
-            const generateRosterButton = document.getElementById('generate-roster-button');
-            const clearRosterButton = document.getElementById('clear-roster-button');
-            const notificationArea = document.getElementById('notification-area');
-            const downloadTemplateButton = document.getElementById('download-template-button');
-            const csvFileInput = document.getElementById('csv-file-input');
-            const clearAllMembersButton = document.getElementById('clear-all-members-button');
-            const cancelEditButton = document.getElementById('cancel-edit-button');
-            const downloadPdfButton = document.getElementById('download-pdf-button');
-            const allowDuplicatesToggle = document.getElementById('allow-duplicates-toggle');
-            const undoButton = document.getElementById('undo-button');
-            const redoButton = document.getElementById('redo-button');
-            const volunteerLookupSection = document.getElementById('volunteer-lookup-section');
-            const volunteerSelect = document.getElementById('volunteer-select');
-            const volunteerAssignmentsDisplay = document.getElementById('volunteer-assignments-display');
-            const saveSessionButton = document.getElementById('save-session-button');
-            const loadSessionInput = document.getElementById('load-session-input');
-            
-            // New Feature DOM Elements
-            const addUnavailableForm = document.getElementById('add-unavailable-form');
-            const unavailableDateInputMain = document.getElementById('unavailable-date-input');
-            const unavailableMemberSelect = document.getElementById('unavailable-member-select');
-            const unavailableListDisplay = document.getElementById('unavailable-list-display');
-
-            // Modal Role Elements
-            const modalAddRoleForm = document.getElementById('modal-add-role-form');
-            const modalRoleNameInput = document.getElementById('modal-role-name-input');
-            const modalRolesList = document.getElementById('modal-roles-list');
-
-            // --- STATE MANAGEMENT ---
-            let state = {};
+            // --- State ---
+            let state = {
+                roles: [
+                    { name: 'Main Camera', isMultiple: false, count: 1 },
+                    { name: 'Second Camera', isMultiple: false, count: 1 },
+                    { name: 'ProPresenter', isMultiple: false, count: 1 },
+                    { name: 'Live Monitoring', isMultiple: false, count: 1 },
+                ],
+                dates: [],
+                teamMembers: [],
+                roster: {},
+                unavailability: {},
+                settings: { allowDuplicates: false }
+            };
             let history = [];
             let historyIndex = -1;
-            let currentUnavailableDates = []; // Temp state for form
+            let currentUnavailableDates = [];
+            let calendarState = { year: new Date().getFullYear(), month: new Date().getMonth(), selectedDates: new Set() };
+            let selectedMemberForCalendar = null;
+            let dragSrcItem = null;
+            let draggedRoleRow = null;
             const MAX_HISTORY = 20;
 
-            const updateState = (newState) => {
-                state = newState;
-                saveState();
-                renderAll();
+            // --- DOM Elements ---
+            const els = {
+                rosterTable: document.getElementById('roster-table-container'),
+                teamModal: document.getElementById('team-modal'),
+                unavailabilityModal: document.getElementById('unavailability-modal'),
+                rolesCheckboxes: document.getElementById('roles-checkboxes'),
+                teamList: document.getElementById('team-members-list'),
+                memberSelect: document.getElementById('unavailable-member-select'),
+                unavailableList: document.getElementById('unavailable-list-display'),
+                dateInputMain: document.getElementById('unavailable-date-input'),
+                volunteerSelect: document.getElementById('volunteer-select'),
+                volunteerDisplay: document.getElementById('volunteer-assignments-display'),
+                memberForm: document.getElementById('add-member-form'),
+                cancelEditBtn: document.getElementById('cancel-edit-button'),
+                rolesListModal: document.getElementById('modal-roles-list'),
+                unavMemberSelect: document.getElementById('unavailability-member-select'),
+                calGrid: document.getElementById('calendar-grid'),
+                calDates: document.getElementById('calendar-selected-dates'),
+                calTitle: document.getElementById('calendar-month-year'),
+                notifyArea: document.getElementById('notification-area')
             };
 
-            const saveState = () => {
-                localStorage.setItem('rosterAppState', JSON.stringify(state));
+            // --- Functions Defined BEFORE Usage ---
+
+            const showNotification = (message, isError = false) => {
+                const notification = document.createElement('div');
+                notification.textContent = message;
+                notification.className = `p-4 rounded-lg shadow-lg text-white text-sm font-semibold transition-all duration-300 transform translate-x-full ${isError ? 'bg-red-500' : 'bg-green-500'} mb-2`;
+                els.notifyArea.appendChild(notification);
+                setTimeout(() => notification.classList.remove('translate-x-full'), 100);
+                setTimeout(() => {
+                    notification.classList.add('translate-x-full');
+                    notification.addEventListener('transitionend', () => notification.remove());
+                }, 3000);
             };
 
-            const loadState = () => {
-                const savedState = localStorage.getItem('rosterAppState');
-                if (savedState) {
-                    state = JSON.parse(savedState);
-                } else {
-                    // Default state if nothing is saved
-                    state = {
-                        roles: [
-                            { name: 'Main Camera', isMultiple: false, count: 1 },
-                            { name: 'Second Camera', isMultiple: false, count: 1 },
-                            { name: 'ProPresenter', isMultiple: false, count: 1 },
-                            { name: 'Live Monitoring', isMultiple: false, count: 1 },
-                        ],
-                        dates: [],
-                        teamMembers: [],
-                        roster: {},
-                        unavailability: {},
-                        settings: {
-                            allowDuplicates: false
-                        }
-                    };
-                }
-                 // Backwards compatibility checks
-                state.teamMembers.forEach(m => {
-                    if (!m.unavailableDates) m.unavailableDates = [];
-                });
-                if (!state.unavailability) state.unavailability = {};
-                state.roles.forEach(r => {
-                    if (typeof r === 'string') { // Old format
-                       const index = state.roles.indexOf(r);
-                       state.roles[index] = { name: r, isMultiple: false, count: 1 };
-                    }
-                });
+            const saveState = () => localStorage.setItem('rosterAppState', JSON.stringify(state));
 
-                history = [JSON.parse(JSON.stringify(state.roster))];
-                historyIndex = 0;
-            };
-
-            // --- HISTORY (UNDO/REDO) MANAGEMENT ---
             const pushToHistory = () => {
-                if (historyIndex < history.length - 1) {
-                    history = history.slice(0, historyIndex + 1);
-                }
-                const currentRosterState = JSON.parse(JSON.stringify(state.roster));
-                history.push(currentRosterState);
-                if (history.length > MAX_HISTORY) {
-                    history.shift();
-                }
+                if (historyIndex < history.length - 1) history = history.slice(0, historyIndex + 1);
+                history.push(JSON.parse(JSON.stringify(state.roster)));
+                if (history.length > MAX_HISTORY) history.shift();
                 historyIndex = history.length - 1;
                 updateUndoRedoButtons();
             };
 
-            const undo = () => {
-                if (historyIndex > 0) {
-                    historyIndex--;
-                    state.roster = JSON.parse(JSON.stringify(history[historyIndex]));
-                    saveState();
-                    renderRosterTable();
-                    updateUndoRedoButtons();
-                }
-            };
-            
-            const redo = () => {
-                if (historyIndex < history.length - 1) {
-                    historyIndex++;
-                    state.roster = JSON.parse(JSON.stringify(history[historyIndex]));
-                    saveState();
-                    renderRosterTable();
-                    updateUndoRedoButtons();
-                }
-            };
-
             const updateUndoRedoButtons = () => {
-                undoButton.disabled = historyIndex <= 0;
-                redoButton.disabled = historyIndex >= history.length - 1;
+                document.getElementById('undo-button').disabled = historyIndex <= 0;
+                document.getElementById('redo-button').disabled = historyIndex >= history.length - 1;
             };
 
+            // --- Handler Functions ---
 
-            // --- UI RENDERING FUNCTIONS ---
-            const renderAll = () => {
-                renderRosterTable();
-                renderRolesCheckboxes();
-                renderTeamMembers();
-                updateTeamMembersHeading();
-                renderModalRolesList();
-                renderVolunteerDropdown();
-                renderUnavailableMemberDropdown();
-                renderUnavailableListForDate(unavailableDateInputMain.value);
-                allowDuplicatesToggle.checked = state.settings.allowDuplicates;
+            const handleCustomNameBlur = (e) => {
+                const input = e.target;
+                const roleName = input.dataset.role;
+                const date = input.dataset.date;
+                const index = parseInt(input.dataset.index);
+                const customName = input.value.trim();
+                const assignments = state.roster[date]?.[roleName] || [];
+                
+                if (assignments[index] !== customName) {
+                    if (!state.roster[date]) state.roster[date] = {};
+                    state.roster[date][roleName] = assignments;
+                    state.roster[date][roleName][index] = customName || ''; 
+                    // Clean empty only if > 1
+                    if (state.roster[date][roleName].length > 1) {
+                         state.roster[date][roleName] = state.roster[date][roleName].filter(name => name !== '');
+                    }
+                    pushToHistory();
+                    updateState(state);
+                    if(customName) showNotification(`Assignment updated: ${customName}`);
+                }
             };
 
-            const renderRosterTable = () => {
-                if (state.dates.length === 0 || state.roles.length === 0) {
-                    rosterTableContainer.innerHTML = `<div class="p-8 text-center text-slate-500">
-                        <p class="font-semibold">Your roster is empty.</p>
-                        <p class="mt-1 text-sm">Add some roles and dates to get started.</p>
-                    </div>`;
+            const handleAssignmentChange = (e) => {
+                const select = e.target;
+                const roleName = select.dataset.role;
+                const date = select.dataset.date;
+                const index = parseInt(select.dataset.index);
+                const selectedValue = select.value;
+                const parentDiv = select.closest('.relative');
+                const customInput = parentDiv.querySelector('.custom-name-input');
+                
+                let assignments = state.roster[date]?.[roleName] || [];
+                if (!state.roster[date]) state.roster[date] = {};
+                state.roster[date][roleName] = assignments;
+
+                if (selectedValue === '__custom_input__') {
+                    customInput.value = '';
+                    customInput.classList.remove('hidden');
+                    customInput.focus();
+                    select.classList.add('hidden');
+                    return; 
+                } 
+                
+                customInput.classList.add('hidden');
+                select.classList.remove('hidden');
+                
+                // Duplicate check within role
+                if (selectedValue && assignments.includes(selectedValue)) {
+                    const existingIndex = assignments.indexOf(selectedValue);
+                    if (existingIndex !== index) {
+                        showNotification(`${selectedValue} is already assigned to this role!`, true);
+                        select.value = assignments[index] || ''; 
+                        return;
+                    }
+                }
+
+                if (index === 0 && selectedValue === '' && assignments.length === 1) {
+                        state.roster[date][roleName] = [''];
+                } else if (selectedValue === '') {
+                    state.roster[date][roleName].splice(index, 1);
+                    if (state.roster[date][roleName].length === 0) state.roster[date][roleName] = [''];
+                } else {
+                        state.roster[date][roleName][index] = selectedValue;
+                }
+
+                if (state.roster[date][roleName].length > 1) {
+                        state.roster[date][roleName] = state.roster[date][roleName].filter(name => name !== '');
+                }
+                
+                pushToHistory();
+                updateState(state);
+                showNotification(`Assignment updated.`);
+            };
+
+            const handleRemoveAssignment = (e) => {
+                const btn = e.target.closest('button');
+                const roleName = btn.dataset.role;
+                const date = btn.dataset.date;
+                const index = parseInt(btn.dataset.index);
+                let assignments = state.roster[date]?.[roleName] || [''];
+                
+                if (assignments.length > 1) {
+                    assignments.splice(index, 1);
+                } else if (assignments.length === 1) {
+                    assignments[0] = '';
+                }
+                if (!state.roster[date]) state.roster[date] = {};
+                state.roster[date][roleName] = assignments;
+                
+                pushToHistory();
+                updateState(state);
+            };
+
+            const handleAddAssignment = (e) => {
+                const btn = e.target.closest('button');
+                const roleName = btn.dataset.role;
+                const date = btn.dataset.date;
+                if (!state.roster[date]) state.roster[date] = {};
+                if (!state.roster[date][roleName]) state.roster[date][roleName] = [''];
+                
+                if (state.roster[date][roleName].length === 1 && state.roster[date][roleName][0] === '') {
+                    state.roster[date][roleName].push('');
+                } else if (state.roster[date][roleName].every(name => name !== '')) {
+                     state.roster[date][roleName].push('');
+                } else {
+                    showNotification('Please fill the empty slot before adding another.', true);
                     return;
                 }
-
-                const sortedDates = [...state.dates].sort((a, b) => new Date(a.date) - new Date(b.date));
-
-                let tableHTML = `<table class="w-full text-sm text-left">`;
-                tableHTML += `<thead class="bg-slate-100 text-xs text-slate-600 uppercase"><tr>`;
-                tableHTML += `<th class="px-6 py-3 sticky left-0 bg-slate-100 z-10 w-48">
-                                <div class="flex items-center justify-between">Role</div>
-                             </th>`;
-
-                sortedDates.forEach(d => {
-                    const dateObj = new Date(d.date + 'T00:00:00');
-                    const day = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
-                    const date = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    const unavailableOnDate = state.unavailability[d.date] || [];
-                    tableHTML += `<th scope="col" class="px-6 py-3 group relative" data-date-header="${d.date}" data-event-header="${d.event}">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="font-bold">${date}</p>
-                                <p class="font-normal text-slate-500">${d.event || day}</p>
-                            </div>
-                            <div class="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button data-generate-for-date="${d.date}" class="p-1 text-slate-400 hover:text-green-500 hover:bg-green-100 rounded-full" title="Generate for this date only">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
-                                </button>
-                                <button data-date-to-delete="${d.date}" class="p-1 text-slate-400 hover:text-red-500 hover:bg-red-100 rounded-full" title="Delete Date">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                                </button>
-                            </div>
-                        </div>
-                        ${unavailableOnDate.length > 0 ? `<div class="text-xxs text-amber-600 font-semibold absolute bottom-1 left-1 bg-amber-100 px-1 rounded-sm cursor-pointer" title="${unavailableOnDate.join(', ')}">${unavailableOnDate.length} unavailable</div>` : ''}
-                    </th>`;
-                });
-                tableHTML += `</tr></thead><tbody id="roster-tbody">`;
-
-                state.roles.forEach(role => {
-                    tableHTML += `<tr class="role-row bg-white border-b hover:bg-slate-50 group" data-role-row="${role.name}">`;
-                    tableHTML += `<th scope="row" class="px-6 py-4 font-medium text-slate-900 sticky left-0 bg-white group-hover:bg-slate-50 z-10 w-48 cursor-grab" draggable="true">
-                                    <div class="flex items-center justify-between">
-                                        <span>${role.name} ${role.isMultiple ? `(${role.count})` : ''}</span>
-                                        <button data-role-to-delete="${role.name}" class="p-1 text-slate-400 hover:text-red-500 hover:bg-red-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" title="Delete Role">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                        </button>
-                                    </div>
-                                 </th>`;
-                    sortedDates.forEach(d => {
-                        const assignedMembers = (state.roster[d.date] && state.roster[d.date][role.name]) || [];
-                        tableHTML += `<td class="roster-cell px-6 py-4" data-date="${d.date}" data-role="${role.name}" draggable="true" tabindex="0">
-                            <div class="h-full w-full">${assignedMembers.join(', ')}</div>
-                        </td>`;
-                    });
-                    tableHTML += `</tr>`;
-                });
-
-                tableHTML += `</tbody></table>`;
-                rosterTableContainer.innerHTML = tableHTML;
+                pushToHistory();
+                updateState(state);
             };
+
+            // --- Drag & Drop Handlers ---
+            const handleItemDragStart = (e) => { e.stopPropagation(); dragSrcItem = e.target; e.target.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; };
+            const handleItemDragEnd = (e) => { if(dragSrcItem) dragSrcItem.classList.remove('dragging'); dragSrcItem = null; document.querySelectorAll('.drag-over-cell').forEach(el => el.classList.remove('drag-over-cell')); };
+            const handleCellDragOver = (e) => { if (dragSrcItem) { e.preventDefault(); e.currentTarget.classList.add('drag-over-cell'); } };
+            const handleCellDragLeave = (e) => { e.currentTarget.classList.remove('drag-over-cell'); };
             
-            const renderVolunteerDropdown = () => {
-                if (state.teamMembers.length > 0) {
-                    volunteerLookupSection.classList.remove('hidden');
-                    const currentSelection = volunteerSelect.value;
-                    const sortedMembers = [...state.teamMembers].sort((a, b) => a.name.localeCompare(b.name));
-                    
-                    volunteerSelect.innerHTML = '<option value="">-- Choose a name --</option>';
-                    sortedMembers.forEach(member => {
-                        volunteerSelect.innerHTML += `<option value="${member.name}">${member.name}</option>`;
-                    });
+            const handleCellDrop = (e) => {
+                if (dragSrcItem) {
+                    e.preventDefault(); e.stopPropagation();
+                    const destCell = e.currentTarget;
+                    destCell.classList.remove('drag-over-cell');
+                    const srcDate = dragSrcItem.dataset.date;
+                    const srcRole = dragSrcItem.dataset.role;
+                    const srcIndex = parseInt(dragSrcItem.dataset.index);
+                    const destDate = destCell.dataset.date;
+                    const destRole = destCell.dataset.role;
+                    if (srcDate === destDate && srcRole === destRole) return;
 
-                    volunteerSelect.value = currentSelection;
-                } else {
-                    volunteerLookupSection.classList.add('hidden');
-                }
-            };
-            
-            const renderUnavailableMemberDropdown = () => {
-                 if (state.teamMembers.length > 0) {
-                    const sortedMembers = [...state.teamMembers].sort((a, b) => a.name.localeCompare(b.name));
-                    unavailableMemberSelect.innerHTML = '<option value="">Select member...</option>';
-                     sortedMembers.forEach(member => {
-                        unavailableMemberSelect.innerHTML += `<option value="${member.name}">${member.name}</option>`;
-                    });
-                 } else {
-                    unavailableMemberSelect.innerHTML = '<option value="">Add a member first...</option>';
-                 }
-            };
+                    const srcVal = state.roster[srcDate][srcRole][srcIndex];
+                    if(!srcVal) return; 
 
-            const renderModalRolesList = () => {
-                if (state.roles.length === 0) {
-                    modalRolesList.innerHTML = `<p class="text-sm text-slate-500">No roles added yet.</p>`;
-                    return;
-                }
-                modalRolesList.innerHTML = state.roles.map(role => `
-                    <div class="bg-slate-100 p-3 rounded-md">
-                        <div class="flex items-center justify-between">
-                            <input type="text" value="${role.name}" data-original-role-name="${role.name}" class="modal-role-input flex-grow bg-transparent text-sm font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 rounded-sm px-1">
-                            <button data-role-to-delete="${role.name}" class="ml-2 p-1 text-slate-500 hover:text-red-600 rounded-full hover:bg-red-100">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                            </button>
-                        </div>
-                        <div class="flex items-center gap-4 mt-2 text-sm">
-                            <label class="flex items-center gap-2">
-                                <input type="checkbox" data-role-multiple-toggle="${role.name}" ${role.isMultiple ? 'checked' : ''} class="rounded border-slate-300 text-blue-600 shadow-sm focus:ring-blue-500">
-                                Allow Multiple
-                            </label>
-                            <div class="${role.isMultiple ? '' : 'hidden'}">
-                                <label>
-                                    Count:
-                                    <select data-role-count-select="${role.name}" class="ml-1 rounded-md border-slate-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 text-sm py-1">
-                                        <option value="1" ${role.count == 1 ? 'selected' : ''}>1</option>
-                                        <option value="2" ${role.count == 2 ? 'selected' : ''}>2</option>
-                                        <option value="3" ${role.count == 3 ? 'selected' : ''}>3</option>
-                                        <option value="4" ${role.count == 4 ? 'selected' : ''}>4</option>
-                                        <option value="5" ${role.count == 5 ? 'selected' : ''}>5</option>
-                                    </select>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-            };
+                    if (!state.roster[destDate]) state.roster[destDate] = {};
+                    if (!state.roster[destDate][destRole]) state.roster[destDate][destRole] = [];
+                    const destAssignments = state.roster[destDate][destRole];
 
-            const renderRolesCheckboxes = () => {
-                if (state.roles.length > 0) {
-                    rolesCheckboxesContainer.innerHTML = state.roles.map(role => `
-                        <label class="flex items-center space-x-2 cursor-pointer">
-                            <input type="checkbox" name="roles" value="${role.name}" class="rounded border-slate-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-offset-0 focus:ring-blue-200 focus:ring-opacity-50">
-                            <span>${role.name}</span>
-                        </label>
-                    `).join('');
-                } else {
-                    rolesCheckboxesContainer.innerHTML = `<p class="text-slate-500 col-span-full">No roles defined. Add roles in the main screen first.</p>`;
+                    const destDateUnavailable = state.unavailability[destDate] || [];
+                    const member = state.teamMembers.find(m => m.name === srcVal);
+                    if (member && (member.unavailableDates.includes(destDate) || destDateUnavailable.includes(srcVal))) {
+                        showNotification(`Cannot move: ${srcVal} is unavailable on ${destDate}.`, true);
+                        return;
+                    }
+                    if (destAssignments.includes(srcVal)) {
+                         showNotification(`${srcVal} is already in the target role.`, true);
+                         return;
+                    }
+
+                    state.roster[srcDate][srcRole].splice(srcIndex, 1);
+                    if(state.roster[srcDate][srcRole].length === 0) state.roster[srcDate][srcRole] = ['']; 
+                    state.roster[destDate][destRole].push(srcVal);
+                    if(state.roster[destDate][destRole].length > 1) {
+                        state.roster[destDate][destRole] = state.roster[destDate][destRole].filter(n => n !== '');
+                    }
+                    pushToHistory();
+                    updateState(state);
                 }
             };
 
-            const renderTeamMembers = () => {
-                if(state.teamMembers.length === 0) {
-                    noMembersMessage.classList.remove('hidden');
-                    teamMembersList.innerHTML = '';
-                    volunteerSelect.value = '';
-                    displayAssignmentsForVolunteer('');
-                } else {
-                    noMembersMessage.classList.add('hidden');
-                    teamMembersList.innerHTML = state.teamMembers.map(member => `
-                        <div class="bg-slate-100 p-4 rounded-lg border border-slate-200 shadow-sm relative">
-                            <div class="absolute top-2 right-2 flex gap-1">
-                                <button data-member-id-edit="${member.id}" class="p-1 text-slate-500 hover:text-blue-600 rounded-full hover:bg-blue-100 transition-colors" title="Edit Member">
-                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                                </button>
-                                <button data-member-id-delete="${member.id}" class="p-1 text-slate-500 hover:text-red-600 rounded-full hover:bg-red-100 transition-colors" title="Delete Member">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                </button>
-                            </div>
-                            <p class="font-semibold text-slate-800 pr-12">${member.name}</p>
-                            <div class="flex flex-wrap gap-1 mt-2">
-                                ${member.roles.map(roleName => `<span class="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${roleName}</span>`).join('')}
-                            </div>
-                            <div class="mt-2 space-y-1 text-sm text-slate-600">
-                                <p><strong class="font-medium">Availability:</strong> ${member.availability || 'Not set'}</p>
-                                <p class="italic">"${member.notes || 'No notes'}"</p>
-                            </div>
-                            <div class="mt-3">
-                                <p class="text-xs font-medium text-slate-500 mb-1">Unavailable Dates:</p>
-                                <div class="flex flex-wrap gap-1">
-                                ${member.unavailableDates && member.unavailableDates.length > 0 
-                                    ? member.unavailableDates.map(date => `<span class="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-1 rounded-full">${new Date(date + 'T00:00:00').toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</span>`).join('') 
-                                    : '<span class="text-xs text-slate-400">None</span>'}
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-                updateTeamMembersHeading();
+            const attachRosterEventListeners = () => {
+                document.querySelectorAll('.roster-assignment-select').forEach(select => {
+                    select.removeEventListener('change', handleAssignmentChange); select.addEventListener('change', handleAssignmentChange);
+                });
+                document.querySelectorAll('.custom-name-input').forEach(input => {
+                     input.removeEventListener('blur', handleCustomNameBlur); input.addEventListener('blur', handleCustomNameBlur);
+                });
+                 document.querySelectorAll('.remove-assignment-btn').forEach(btn => {
+                    btn.removeEventListener('click', handleRemoveAssignment); btn.addEventListener('click', handleRemoveAssignment);
+                });
+                 document.querySelectorAll('.add-assignment-btn').forEach(btn => {
+                    btn.removeEventListener('click', handleAddAssignment); btn.addEventListener('click', handleAddAssignment);
+                });
+                document.querySelectorAll('.assignment-wrapper').forEach(item => {
+                    item.addEventListener('dragstart', handleItemDragStart); item.addEventListener('dragend', handleItemDragEnd);
+                });
+                document.querySelectorAll('.roster-cell').forEach(cell => {
+                    cell.addEventListener('dragover', handleCellDragOver); cell.addEventListener('dragleave', handleCellDragLeave); cell.addEventListener('drop', handleCellDrop);
+                });
             };
 
-            const updateTeamMembersHeading = () => {
-                 teamMembersHeading.textContent = `Team Members (${state.teamMembers.length})`;
-            };
-
-            const renderUnavailableDatesList = () => {
-                unavailableDatesList.innerHTML = currentUnavailableDates.map(date => `
-                    <span class="flex items-center gap-1 text-xs font-medium bg-red-100 text-red-800 px-2 py-1 rounded-full">
-                        ${new Date(date + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                        <button type="button" data-date-to-remove="${date}" class="font-bold text-red-600 hover:text-red-800">&times;</button>
-                    </span>
-                `).join('');
-            };
+            // --- Helper Render Functions ---
 
             const renderUnavailableListForDate = (date) => {
-                if (!date) {
-                    unavailableListDisplay.innerHTML = '<p class="text-slate-400">Select a date to see who is unavailable.</p>';
-                    return;
-                }
+                if (!date) { els.unavailableList.innerHTML = ''; return; }
                 const unavailableOnDate = state.unavailability[date] || [];
                 if (unavailableOnDate.length === 0) {
-                    unavailableListDisplay.innerHTML = `<p class="text-slate-400">Everyone is available on this date.</p>`;
+                    els.unavailableList.innerHTML = `<p class="text-slate-400">Everyone is available.</p>`;
                 } else {
-                    unavailableListDisplay.innerHTML = '<p class="font-semibold mb-1 text-slate-600">Unavailable on this date:</p>' + unavailableOnDate.map(name => `
+                    els.unavailableList.innerHTML = '<p class="font-semibold mb-1 text-slate-600">Unavailable:</p>' + unavailableOnDate.map(name => `
                         <span class="flex items-center justify-between text-xs font-medium bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
                             ${name}
                             <button type="button" data-remove-unavailable-name="${name}" data-remove-unavailable-date="${date}" class="ml-2 font-bold text-amber-600 hover:text-amber-800">&times;</button>
-                        </span>
-                    `).join('');
+                        </span>`).join('');
                 }
-            };
-
-
-            // --- EVENT HANDLERS (GENERAL) ---
-            addRoleForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const newRoleName = roleNameInput.value.trim();
-                if (newRoleName && !state.roles.some(r => r.name === newRoleName)) {
-                    state.roles.push({ name: newRoleName, isMultiple: false, count: 1 });
-                    saveState();
-                    renderAll();
-                    roleNameInput.value = '';
-                }
-            });
-
-            addDateForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const newDate = dateInput.value;
-                const newEvent = eventNameInput.value.trim();
-                if (newDate && !state.dates.some(d => d.date === newDate)) {
-                    state.dates.push({ date: newDate, event: newEvent });
-                    saveState();
-                    renderRosterTable();
-                    dateInput.value = '';
-                    eventNameInput.value = '';
-                }
-            });
-
-            const generateForDate = (date) => {
-                if (!state.roster[date]) state.roster[date] = {};
-
-                const dateUnavailable = state.unavailability[date] || [];
-                const dayAssignments = {}; // Tracks who is assigned to what on this day to respect allowDuplicates toggle
-
-                state.roles.forEach(role => {
-                    let assignedToRole = [];
-                    const availableMembers = state.teamMembers.filter(member => 
-                        member.roles.includes(role.name) && 
-                        !member.unavailableDates.includes(date) &&
-                        !dateUnavailable.includes(member.name) &&
-                        (state.settings.allowDuplicates || !dayAssignments[member.name])
-                    );
-
-                    let shuffledMembers = [...availableMembers].sort(() => 0.5 - Math.random());
-                    
-                    for (let i = 0; i < role.count && i < shuffledMembers.length; i++) {
-                        const memberToAssign = shuffledMembers[i];
-                        assignedToRole.push(memberToAssign.name);
-                        if (!state.settings.allowDuplicates) {
-                            dayAssignments[memberToAssign.name] = true;
-                        }
-                    }
-                    state.roster[date][role.name] = assignedToRole;
-                });
-                
-                pushToHistory();
-                saveState();
-                renderRosterTable();
-            };
-
-            generateRosterButton.addEventListener('click', () => {
-                state.dates.forEach(d => generateForDate(d.date));
-            });
-
-            clearRosterButton.addEventListener('click', () => {
-                state.roster = {};
-                pushToHistory();
-                saveState();
-                renderRosterTable();
-            });
-            
-             allowDuplicatesToggle.addEventListener('change', () => {
-                state.settings.allowDuplicates = allowDuplicatesToggle.checked;
-                saveState();
-            });
-
-            undoButton.addEventListener('click', undo);
-            redoButton.addEventListener('click', redo);
-
-            document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
-                if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); }
-            });
- 
-            saveSessionButton.addEventListener('click', () => {
-                const sessionData = JSON.stringify(state, null, 2);
-                const blob = new Blob([sessionData], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `roster-session-${new Date().toISOString().slice(0, 10)}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                showNotification('Session saved successfully!');
-            });
-
-            loadSessionInput.addEventListener('change', (event) => {
-                const file = event.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const loadedState = JSON.parse(e.target.result);
-                        if (loadedState.roles && loadedState.dates && loadedState.teamMembers && loadedState.roster) {
-                            state = loadedState;
-                            if (!state.settings) state.settings = { allowDuplicates: false };
-                             state.teamMembers.forEach(m => {
-                                if (!m.unavailableDates) m.unavailableDates = [];
-                            });
-                             if (!state.unavailability) state.unavailability = {};
-                             state.roles.forEach(r => {
-                                if (typeof r === 'string') {
-                                   const index = state.roles.indexOf(r);
-                                   state.roles[index] = { name: r, isMultiple: false, count: 1 };
-                                }
-                             });
-                            history = [JSON.parse(JSON.stringify(state.roster))];
-                            historyIndex = 0;
-                            saveState();
-                            renderAll();
-                            updateUndoRedoButtons();
-                            showNotification('Session loaded successfully!');
-                        } else {
-                            throw new Error('Invalid session file format.');
-                        }
-                    } catch (error) {
-                        showNotification('Could not load session file. It may be corrupted.', true);
-                    } finally {
-                        loadSessionInput.value = '';
-                    }
-                };
-                reader.readAsText(file);
-            });
-
-            addUnavailableForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const date = unavailableDateInputMain.value;
-                const memberName = unavailableMemberSelect.value;
-                if (!date || !memberName) return;
-
-                if (!state.unavailability[date]) {
-                    state.unavailability[date] = [];
-                }
-                if (!state.unavailability[date].includes(memberName)) {
-                    state.unavailability[date].push(memberName);
-                    saveState();
-                    renderRosterTable();
-                    renderUnavailableListForDate(date);
-                    showNotification(`${memberName} marked as unavailable on ${date}.`);
-                } else {
-                    showNotification(`${memberName} is already unavailable on ${date}.`, true);
-                }
-                unavailableMemberSelect.value = ''; 
-            });
-
-            unavailableDateInputMain.addEventListener('input', () => {
-                renderUnavailableListForDate(unavailableDateInputMain.value);
-            });
-
-            unavailableListDisplay.addEventListener('click', e => {
-                const removeBtn = e.target.closest('[data-remove-unavailable-name]');
-                if (removeBtn) {
-                    const nameToRemove = removeBtn.dataset.removeUnavailableName;
-                    const date = removeBtn.dataset.removeUnavailableDate;
-                    if (state.unavailability[date]) {
-                        state.unavailability[date] = state.unavailability[date].filter(n => n !== nameToRemove);
-                        if (state.unavailability[date].length === 0) {
-                            delete state.unavailability[date];
-                        }
-                        saveState();
-                        renderRosterTable();
-                        renderUnavailableListForDate(date);
-                        showNotification(`${nameToRemove} is now available on ${date}.`);
-                    }
-                }
-            });
-
-
-            volunteerSelect.addEventListener('change', () => {
-                displayAssignmentsForVolunteer(volunteerSelect.value);
-            });
-
-            addUnavailableDateButton.addEventListener('click', () => {
-                const date = unavailableDateInput.value;
-                if (date && !currentUnavailableDates.includes(date)) {
-                    currentUnavailableDates.push(date);
-                    currentUnavailableDates.sort();
-                    unavailableDateInput.value = '';
-                    renderUnavailableDatesList();
-                }
-            });
-
-            unavailableDatesList.addEventListener('click', e => {
-                const removeButton = e.target.closest('[data-date-to-remove]');
-                if (removeButton) {
-                    const dateToRemove = removeButton.dataset.dateToRemove;
-                    currentUnavailableDates = currentUnavailableDates.filter(d => d !== dateToRemove);
-                    renderUnavailableDatesList();
-                }
-            });
-
-
-            // --- ROSTER TABLE INTERACTIVITY ---
-            const makeHeaderEditable = (th) => {
-                if (th.querySelector('input')) return;
-                const originalDate = th.dataset.dateHeader;
-                const originalEvent = th.dataset.eventHeader;
-                th.innerHTML = `<div class="p-1">
-                        <input type="date" value="${originalDate}" class="block w-full text-sm p-1 border border-slate-300 rounded-md mb-1">
-                        <input type="text" value="${originalEvent}" class="block w-full text-sm p-1 border border-slate-300 rounded-md">
-                    </div>`;
-                const dateInput = th.querySelector('input[type="date"]');
-                const eventInput = th.querySelector('input[type="text"]');
-                dateInput.focus();
-                const saveChanges = () => {
-                    const newDate = dateInput.value;
-                    const newEvent = eventInput.value;
-                    if (newDate !== originalDate && state.dates.some(d => d.date === newDate)) {
-                         showNotification(`Date ${newDate} already exists.`, true);
-                         renderRosterTable(); return;
-                    }
-                    const dateIndex = state.dates.findIndex(d => d.date === originalDate);
-                    if (dateIndex !== -1) {
-                        state.dates[dateIndex].date = newDate;
-                        state.dates[dateIndex].event = newEvent;
-                        if (newDate !== originalDate && state.roster[originalDate]) {
-                            state.roster[newDate] = state.roster[originalDate];
-                            delete state.roster[originalDate];
-                        }
-                         if (newDate !== originalDate && state.unavailability[originalDate]) {
-                            state.unavailability[newDate] = state.unavailability[originalDate];
-                            delete state.unavailability[originalDate];
-                        }
-                        pushToHistory();
-                        saveState();
-                        renderRosterTable();
-                    }
-                };
-                th.addEventListener('keydown', e => {
-                    if (e.key === 'Enter') saveChanges();
-                    else if (e.key === 'Escape') renderRosterTable();
-                });
-                th.addEventListener('blur', e => {
-                    if (!th.contains(e.relatedTarget)) saveChanges();
-                }, true);
             };
 
             const displayAssignmentsForVolunteer = (volunteerName) => {
-                volunteerAssignmentsDisplay.innerHTML = '';
+                els.volunteerDisplay.innerHTML = '';
                 if (!volunteerName) return;
                 const assignments = [];
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
+                const today = new Date(); today.setHours(0,0,0,0);
                 const sortedDates = [...state.dates].sort((a, b) => new Date(a.date) - new Date(b.date));
                 sortedDates.forEach(d => {
                     const rosterDate = new Date(d.date + 'T00:00:00');
@@ -944,509 +518,254 @@
                     }
                 });
                 if (assignments.length === 0) {
-                    volunteerAssignmentsDisplay.innerHTML = `<p class="text-sm text-slate-500 p-2">No upcoming assignments for ${volunteerName}.</p>`;
+                    els.volunteerDisplay.innerHTML = `<p class="text-sm text-slate-500 p-2">No upcoming assignments.</p>`;
                 } else {
-                    volunteerAssignmentsDisplay.innerHTML = assignments.map(a => {
-                        const dateObj = new Date(a.date + 'T00:00:00');
-                        const formattedDate = dateObj.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-                        return `<div class="flex justify-between items-center bg-slate-100 p-3 rounded-md text-sm">
-                                <div>
-                                    <p class="font-semibold text-slate-800">${a.role}</p>
-                                    <p class="text-slate-500">${formattedDate} - (${a.event || 'Event'})</p>
-                                </div>
-                            </div>`;
-                    }).join('');
+                    els.volunteerDisplay.innerHTML = assignments.map(a => 
+                        `<div class="flex justify-between items-center bg-slate-100 p-3 rounded-md text-sm"><div><p class="font-semibold text-slate-800">${a.role}</p><p class="text-slate-500">${new Date(a.date+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})} - (${a.event || 'Event'})</p></div></div>`
+                    ).join('');
                 }
             };
 
-            rosterTableContainer.addEventListener('click', e => {
-                const roleDeleteBtn = e.target.closest('[data-role-to-delete]');
-                const dateDeleteBtn = e.target.closest('[data-date-to-delete]');
-                const genDateBtn = e.target.closest('[data-generate-for-date]');
-
-                if (roleDeleteBtn) {
-                    const roleNameToDelete = roleDeleteBtn.dataset.roleToDelete;
-                    state.roles = state.roles.filter(r => r.name !== roleNameToDelete);
-                    state.teamMembers.forEach(m => {
-                        m.roles = m.roles.filter(rName => rName !== roleNameToDelete);
-                    });
-                    Object.keys(state.roster).forEach(date => {
-                        delete state.roster[date][roleNameToDelete];
-                    });
-                    pushToHistory();
-                    updateState(state);
-                }
-                if(dateDeleteBtn) {
-                    const dateToDelete = dateDeleteBtn.dataset.dateToDelete;
-                    state.dates = state.dates.filter(d => d.date !== dateToDelete);
-                    delete state.roster[dateToDelete];
-                    delete state.unavailability[dateToDelete];
-                    pushToHistory();
-                    updateState(state);
-                }
-                if (genDateBtn) {
-                    generateForDate(genDateBtn.dataset.generateForDate);
-                }
-                
-                const cell = e.target.closest('.roster-cell');
-                if (cell) {
-                    makeCellEditable(cell);
-                }
-            });
-            
-            rosterTableContainer.addEventListener('dblclick', e => {
-                 const header = e.target.closest('[data-date-header]');
-                 if (header) makeHeaderEditable(header);
-            });
-            
-            const makeCellEditable = (cell) => {
-                if (cell.querySelector('select, div.editor')) return; // Already editing
-                
-                cell.classList.add('is-editing');
-                const date = cell.dataset.date;
-                const roleName = cell.dataset.role;
-                const role = state.roles.find(r => r.name === roleName);
-                if (!role) return;
-
-                const dateUnavailable = state.unavailability[date] || [];
-                const eligibleMembers = state.teamMembers.filter(m =>
-                    m.roles.includes(roleName) &&
-                    !m.unavailableDates.includes(date) &&
-                    !dateUnavailable.includes(m.name)
-                );
-                
-                const currentAssignments = state.roster[date]?.[roleName] || [];
-                
-                const innerDiv = cell.querySelector('div');
-                innerDiv.innerHTML = '';
-                
-                const select = document.createElement('select');
-                select.className = 'w-full h-full bg-blue-50 border-0 focus:ring-1 focus:ring-blue-500 rounded-md p-1 -m-1';
-                select.innerHTML = `<option value="">-- Assign Member --</option>` + eligibleMembers.map(m =>
-                    `<option value="${m.name}" ${currentAssignments.includes(m.name) ? 'disabled' : ''}>${m.name}</option>`
-                ).join('');
-                
-                innerDiv.appendChild(select);
-                select.focus();
-
-                const saveChange = () => {
-                     const selectedName = select.value;
-                     if (!selectedName) {
-                        renderRosterTable(); return;
-                     }
-                     if (!state.roster[date]) state.roster[date] = {};
-                     if (!state.roster[date][roleName]) state.roster[date][roleName] = [];
-                     
-                     let assignments = state.roster[date][roleName];
-
-                     if (role.isMultiple) {
-                        if (assignments.length < role.count && !assignments.includes(selectedName)) {
-                            assignments.push(selectedName);
-                        } else {
-                            showNotification(`This role only allows ${role.count} member(s).`, true);
-                        }
-                     } else {
-                        assignments = [selectedName];
-                     }
-
-                     state.roster[date][roleName] = assignments;
-                     pushToHistory();
-                     saveState();
-                     renderRosterTable();
-                };
-
-                select.addEventListener('change', saveChange);
-                select.addEventListener('blur', () => renderRosterTable());
-            };
-            
-            // --- Consolidated Drag and Drop Logic ---
-            let dragSrcCell = null;
-            let draggedRoleRow = null;
-
-            const handleDragStart = (e) => {
-                // Prioritize cell drag
-                if (e.target.classList.contains('roster-cell')) {
-                    dragSrcCell = e.target;
-                    e.target.classList.add('dragging');
+            const renderRosterTable = () => {
+                if (state.dates.length === 0 || state.roles.length === 0) {
+                    els.rosterTable.innerHTML = `<div class="p-8 text-center text-slate-500"><p>Roster is empty. Add roles and dates.</p></div>`;
                     return;
                 }
-                // Then check for row drag handle
-                const rowHeader = e.target.closest('th[scope="row"]');
-                if (rowHeader) {
-                     const row = rowHeader.closest('.role-row');
-                     if (row) {
-                        draggedRoleRow = row;
-                        setTimeout(() => row.classList.add('dragging'), 0);
-                     }
-                }
-            };
-            
-            const handleDragOver = (e) => {
-                e.preventDefault();
-                if (dragSrcCell) {
-                    const targetCell = e.target.closest('.roster-cell');
-                    if(targetCell) targetCell.classList.add('drag-over');
-                } else if (draggedRoleRow) {
-                    const targetRow = e.target.closest('.role-row');
-                    if (targetRow && targetRow !== draggedRoleRow) {
-                        document.querySelectorAll('.drag-over-row').forEach(el => el.classList.remove('drag-over-row'));
-                        targetRow.classList.add('drag-over-row');
-                    }
-                }
-            };
-
-            const handleDragLeave = (e) => {
-                 const targetCell = e.target.closest('.roster-cell');
-                 if(targetCell) targetCell.classList.remove('drag-over');
-            };
-
-            const handleDrop = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-
-                // Handle cell drop
-                if (dragSrcCell) {
-                    const dropTargetCell = e.target.closest('.roster-cell');
-                    if (dropTargetCell && dragSrcCell !== dropTargetCell) {
-                        
-                        const srcDate = dragSrcCell.dataset.date, srcRoleName = dragSrcCell.dataset.role;
-                        const destDate = dropTargetCell.dataset.date, destRoleName = dropTargetCell.dataset.role;
-
-                        const srcAssignments = state.roster[srcDate]?.[srcRoleName] || [];
-                        const destAssignments = state.roster[destDate]?.[destRoleName] || [];
-
-                        // Validation
-                        const destDateUnavailable = state.unavailability[destDate] || [];
-                        if (srcAssignments.some(name => destDateUnavailable.includes(name))) {
-                            showNotification(`Cannot move: a member is unavailable on ${destDate}.`, true);
-                            return;
-                        }
-                        const srcDateUnavailable = state.unavailability[srcDate] || [];
-                        if (destAssignments.some(name => srcDateUnavailable.includes(name))) {
-                            showNotification(`Cannot swap: a member is unavailable on ${srcDate}.`, true);
-                            return;
-                        }
-
-                        // Swap logic
-                        if (!state.roster[srcDate]) state.roster[srcDate] = {};
-                        if (!state.roster[destDate]) state.roster[destDate] = {};
-                        state.roster[srcDate][srcRoleName] = destAssignments;
-                        state.roster[destDate][destRoleName] = srcAssignments;
-
-                        pushToHistory();
-                        saveState();
-                        renderRosterTable();
-
-                        // Highlight
-                        const newSrcCell = document.querySelector(`.roster-cell[data-date="${srcDate}"][data-role="${srcRoleName}"]`);
-                        const newDestCell = document.querySelector(`.roster-cell[data-date="${destDate}"][data-role="${destRoleName}"]`);
-                        if(newSrcCell && newDestCell) {
-                            newSrcCell.classList.add('swapped');
-                            newDestCell.classList.add('swapped');
-                            setTimeout(() => {
-                                newSrcCell.classList.remove('swapped');
-                                newDestCell.classList.remove('swapped');
-                            }, 1200);
-                        }
-                    }
-                } 
-                // Handle row drop
-                else if (draggedRoleRow) {
-                    const targetRow = e.target.closest('.role-row');
-                    if (targetRow && draggedRoleRow !== targetRow) {
-                        const sourceRoleName = draggedRoleRow.dataset.roleRow;
-                        const targetRoleName = targetRow.dataset.roleRow;
-                        const sourceIndex = state.roles.findIndex(r => r.name === sourceRoleName);
-                        const targetIndex = state.roles.findIndex(r => r.name === targetRoleName);
-                        if (sourceIndex > -1 && targetIndex > -1) {
-                            const [removed] = state.roles.splice(sourceIndex, 1);
-                            state.roles.splice(targetIndex, 0, removed);
-                            saveState();
-                            renderRosterTable();
-                        }
-                    }
-                }
-            };
-
-            const handleDragEnd = (e) => {
-                if(dragSrcCell) dragSrcCell.classList.remove('dragging');
-                if(draggedRoleRow) draggedRoleRow.classList.remove('dragging');
-                dragSrcCell = null;
-                draggedRoleRow = null;
-                document.querySelectorAll('.drag-over, .drag-over-row').forEach(el => {
-                    el.classList.remove('drag-over');
-                    el.classList.remove('drag-over-row');
+                const sortedDates = [...state.dates].sort((a, b) => new Date(a.date) - new Date(b.date));
+                let html = `<table class="w-full text-sm text-left"><thead class="bg-slate-100 text-xs text-slate-600 uppercase"><tr><th class="px-6 py-3 sticky left-0 bg-slate-100 z-10 w-48">Role</th>`;
+                sortedDates.forEach(d => {
+                    const pU = state.teamMembers.filter(m => m.unavailableDates.includes(d.date)).map(m => m.name);
+                    const gU = state.unavailability[d.date] || [];
+                    const uCount = new Set([...pU, ...gU]).size;
+                    html += `<th class="px-6 py-3 group relative" data-date-header="${d.date}" data-event-header="${d.event}"><div class="flex justify-between"><div><p class="font-bold">${new Date(d.date+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</p><p class="font-normal text-slate-500">${d.event}</p></div><div class="opacity-0 group-hover:opacity-100"><button data-generate-for-date="${d.date}" class="p-1 hover:bg-green-100 text-slate-400">Gen</button><button data-date-to-delete="${d.date}" class="p-1 hover:bg-red-100 text-slate-400">Del</button></div></div>${uCount>0?`<div class="text-xxs text-amber-600 bg-amber-100 px-1 rounded absolute bottom-1 left-1">${uCount} unav</div>`:''}</th>`;
                 });
+                html += `</tr></thead><tbody>`;
+                state.roles.forEach(role => {
+                    html += `<tr class="role-row bg-white border-b hover:bg-slate-50 group" data-role-row="${role.name}"><th class="px-6 py-4 font-medium text-slate-900 sticky left-0 bg-white group-hover:bg-slate-50 z-10 w-48 cursor-grab" draggable="true"><div class="flex justify-between"><span>${role.name} ${role.isMultiple?`(${role.count})`:''}</span><button data-role-to-delete="${role.name}" class="p-1 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100">Del</button></div></th>`;
+                    sortedDates.forEach(d => {
+                        const date = d.date;
+                        let assigned = state.roster[date]?.[role.name] || [];
+                        const dU = state.unavailability[date] || [];
+                        const avail = state.teamMembers.filter(m => m.roles.includes(role.name) && !m.unavailableDates.includes(date) && !dU.includes(m.name));
+                        const ddMembers = [...new Set([...avail.map(m=>m.name), ...assigned])].sort();
+                        const allM = state.teamMembers.map(m=>m.name);
+                        if(assigned.length===0) assigned=[''];
+                        html += `<td class="roster-cell px-6 py-3 border-t border-slate-200 align-top" data-role="${role.name}" data-date="${date}">`;
+                        assigned.forEach((mem, idx) => {
+                            const isU = state.teamMembers.some(m => m.name===mem && (m.unavailableDates.includes(date) || dU.includes(mem)));
+                            const isC = mem && !allM.includes(mem);
+                            let cls = "w-full py-1 pl-2 pr-8 text-sm border rounded-lg bg-white shadow-sm cursor-pointer roster-assignment-select";
+                            if(isU) cls = "w-full py-1 pl-2 pr-8 text-sm border rounded-lg bg-red-50 text-red-700 shadow-sm cursor-pointer roster-assignment-select";
+                            if(isC) cls += " hidden";
+                            html += `<div class="assignment-wrapper relative mb-2" draggable="true" data-role="${role.name}" data-date="${date}" data-index="${idx}">
+                                <select class="${cls}" data-role="${role.name}" data-date="${date}" data-index="${idx}"><option value="">--</option>${ddMembers.map(n=>`<option value="${n}" ${mem===n?'selected':''}>${n}${isU&&mem===n?' (Unav)':''}</option>`).join('')}<option value="__custom_input__">Custom...</option></select>
+                                <input type="text" value="${isC?mem:''}" class="custom-name-input ${isC?'block':'hidden'} w-full py-1 pl-2 pr-8 text-sm border border-blue-500 rounded-lg absolute top-0 left-0 bg-white z-10" data-role="${role.name}" data-date="${date}" data-index="${idx}"/>
+                                <button type="button" data-role="${role.name}" data-date="${date}" data-index="${idx}" class="absolute top-0 right-0 mt-1.5 mr-1 p-1 text-slate-400 hover:text-red-600 rounded-full hover:bg-slate-100 remove-assignment-btn">x</button></div>`;
+                        });
+                        html += `<button type="button" class="add-assignment-btn mt-1 w-full text-center py-1 px-2 bg-slate-50 text-slate-500 border border-slate-200 border-dashed rounded-lg text-xs hover:bg-slate-100 hover:text-slate-700" data-role="${role.name}" data-date="${date}">+ Add</button></td>`;
+                    });
+                    html += `</tr>`;
+                });
+                html += `</tbody></table>`;
+                els.rosterTable.innerHTML = html;
+                attachRosterEventListeners();
             };
 
-            rosterTableContainer.addEventListener('dragstart', handleDragStart);
-            rosterTableContainer.addEventListener('dragover', handleDragOver);
-            rosterTableContainer.addEventListener('dragleave', handleDragLeave);
-            rosterTableContainer.addEventListener('drop', handleDrop);
-            rosterTableContainer.addEventListener('dragend', handleDragEnd);
-
-
-            // --- MODAL EVENT HANDLERS ---
-            teamModalButton.addEventListener('click', () => teamModal.showModal());
-            closeModalButton.addEventListener('click', () => teamModal.close());
-
-            addMemberForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const name = memberNameInput.value.trim();
-                const availability = memberAvailabilityInput.value.trim();
-                const notes = memberNotesInput.value.trim();
-                const selectedRoles = Array.from(document.querySelectorAll('input[name="roles"]:checked')).map(cb => cb.value);
-                
-                if(name) {
-                    if (state.editingMemberId) {
-                        const member = state.teamMembers.find(m => m.id === state.editingMemberId);
-                        if (member) {
-                            member.name = name;
-                            member.roles = selectedRoles;
-                            member.availability = availability;
-                            member.notes = notes;
-                            member.unavailableDates = [...currentUnavailableDates];
-                        }
-                    } else {
-                        if(state.teamMembers.some(m => m.name.toLowerCase() === name.toLowerCase())){
-                            showNotification(`${name} already exists in the team.`, true);
-                            return;
-                        }
-                        state.teamMembers.push({ id: Date.now(), name, roles: selectedRoles, availability, notes, unavailableDates: [...currentUnavailableDates] });
-                    }
-                    resetMemberForm();
-                    updateState(state);
-                    displayAssignmentsForVolunteer('');
-                }
-            });
-
-            teamMembersList.addEventListener('click', (e) => {
-                const editButton = e.target.closest('[data-member-id-edit]');
-                const deleteButton = e.target.closest('[data-member-id-delete]');
-
-                if (editButton) {
-                    const memberId = parseFloat(editButton.dataset.memberIdEdit);
-                    const member = state.teamMembers.find(m => m.id === memberId);
-                    if (member) {
-                        state.editingMemberId = memberId;
-                        memberNameInput.value = member.name;
-                        memberAvailabilityInput.value = member.availability || '';
-                        memberNotesInput.value = member.notes || '';
-                        currentUnavailableDates = member.unavailableDates ? [...member.unavailableDates] : [];
-                        renderUnavailableDatesList();
-                        document.querySelectorAll('input[name="roles"]').forEach(cb => {
-                            cb.checked = member.roles.includes(cb.value);
-                        });
-                        addMemberForm.querySelector('button[type="submit"]').textContent = 'Update Member';
-                        cancelEditButton.classList.remove('hidden');
-                        memberNameInput.focus();
-                    }
-                } else if (deleteButton) {
-                    const memberIdToDelete = parseFloat(deleteButton.dataset.memberIdDelete);
-                    state.teamMembers = state.teamMembers.filter(m => m.id !== memberIdToDelete);
-                    updateState(state);
-                }
-            });
-
-             cancelEditButton.addEventListener('click', resetMemberForm);
-
-            clearAllMembersButton.addEventListener('click', (e) => {
-                const button = e.currentTarget;
-                if(button.dataset.confirm) {
-                    state.teamMembers = [];
-                    state.roster = {};
-                    updateState(state);
-                    button.textContent = 'Clear All';
-                    delete button.dataset.confirm;
+            const renderRolesCheckboxes = () => {
+                if (state.roles.length > 0) {
+                    els.rolesCheckboxes.innerHTML = state.roles.map(role => `<label class="flex items-center space-x-2 cursor-pointer"><input type="checkbox" name="roles" value="${role.name}" class="rounded text-blue-600 shadow-sm"><span>${role.name}</span></label>`).join('');
                 } else {
-                    button.textContent = 'Are you sure?';
-                    button.dataset.confirm = 'true';
-                    setTimeout(() => {
-                         if(button.dataset.confirm) {
-                           button.textContent = 'Clear All';
-                           delete button.dataset.confirm;
-                         }
-                    }, 3000);
+                    els.rolesCheckboxes.innerHTML = `<p class="text-slate-500 col-span-full">No roles defined.</p>`;
                 }
+            };
+
+            const renderTeamMembers = () => {
+                if(state.teamMembers.length === 0) {
+                    document.getElementById('no-members-message').classList.remove('hidden');
+                    els.teamList.innerHTML = '';
+                } else {
+                    document.getElementById('no-members-message').classList.add('hidden');
+                    els.teamList.innerHTML = state.teamMembers.map(member => `
+                        <div class="bg-slate-100 p-4 rounded-lg border border-slate-200 shadow-sm relative"><div class="absolute top-2 right-2 flex gap-1"><button data-member-id-edit="${member.id}" class="p-1 text-slate-500 hover:text-blue-600">Edit</button><button data-member-id-delete="${member.id}" class="p-1 text-slate-500 hover:text-red-600">Del</button></div><p class="font-semibold text-slate-800 pr-12">${member.name}</p><div class="flex flex-wrap gap-1 mt-2">${member.roles.map(r => `<span class="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${r}</span>`).join('')}</div><div class="mt-3"><p class="text-xs font-medium text-slate-500 mb-1">Unavailable:</p><div class="flex flex-wrap gap-1">${member.unavailableDates.length > 0 ? member.unavailableDates.map(d => `<span class="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-1 rounded-full">${new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`).join('') : '<span class="text-xs text-slate-400">None</span>'}</div></div></div>`).join('');
+                }
+                document.getElementById('team-members-heading').textContent = `Team Members (${state.teamMembers.length})`;
+            };
+
+            const renderModalRolesList = () => {
+                els.rolesListModal.innerHTML = state.roles.length === 0 ? `<p class="text-sm text-slate-500">No roles added yet.</p>` : state.roles.map(role => `
+                    <div class="bg-slate-100 p-3 rounded-md"><div class="flex items-center justify-between"><input type="text" value="${role.name}" data-original-role-name="${role.name}" class="modal-role-input flex-grow bg-transparent text-sm font-medium"><button data-role-to-delete="${role.name}" class="ml-2 p-1 text-slate-500 hover:text-red-600">Del</button></div><div class="flex items-center gap-4 mt-2 text-sm"><label class="flex items-center gap-2"><input type="checkbox" data-role-multiple-toggle="${role.name}" ${role.isMultiple ? 'checked' : ''}> Allow Multiple</label><div class="${role.isMultiple ? '' : 'hidden'}"><label>Count: <select data-role-count-select="${role.name}" class="ml-1"><option value="1" ${role.count==1?'selected':''}>1</option><option value="2" ${role.count==2?'selected':''}>2</option><option value="3" ${role.count==3?'selected':''}>3</option><option value="4" ${role.count==4?'selected':''}>4</option><option value="5" ${role.count==5?'selected':''}>5</option></select></label></div></div></div>`).join('');
+            };
+
+            const populateDropdowns = () => {
+                const sM = [...state.teamMembers].sort((a,b) => a.name.localeCompare(b.name));
+                const opts = '<option value="">Select...</option>' + sM.map(m=>`<option value="${m.name}">${m.name}</option>`).join('');
+                els.volunteerSelect.innerHTML = opts;
+                els.memberSelect.innerHTML = opts;
+                els.unavMemberSelect.innerHTML = opts;
+            };
+
+            const renderUnavailableDatesList = () => {
+                const list = document.getElementById('unavailable-dates-list');
+                list.innerHTML = currentUnavailableDates.map(d => `<span class="flex items-center gap-1 text-xs font-medium bg-red-100 text-red-800 px-2 py-1 rounded-full">${new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}<button type="button" data-date-to-remove="${d}" class="font-bold text-red-600 hover:text-red-800">&times;</button></span>`).join('');
+            };
+
+            const renderCalendar = () => {
+                const year = calendarState.year;
+                const month = calendarState.month;
+                els.calTitle.textContent = new Date(year, month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                els.calGrid.innerHTML = '';
+                const firstDay = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(day => els.calGrid.innerHTML += `<div class="font-bold text-slate-500">${day}</div>`);
+                for (let i = 0; i < firstDay; i++) els.calGrid.innerHTML += `<div></div>`;
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const isSel = calendarState.selectedDates.has(dStr);
+                    els.calGrid.innerHTML += `<button class="calendar-day p-2 rounded-full hover:bg-slate-100 ${isSel ? 'bg-blue-600 text-white hover:bg-blue-700' : 'text-slate-700'}" data-date="${dStr}">${day}</button>`;
+                }
+                els.calDates.innerHTML = [...calendarState.selectedDates].sort().map(d => `<span class="flex items-center gap-1 text-xs font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full">${new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}<button type="button" data-deselect-date="${d}" class="font-bold text-blue-600 hover:text-blue-800">&times;</button></span>`).join('') || `<span class="text-sm text-slate-400">No dates selected</span>`;
+            };
+
+            // --- Logic ---
+            const generateForDate = (date) => {
+                if (!state.roster[date]) state.roster[date] = {};
+                const dU = state.unavailability[date] || [];
+                const dayAssign = {}; 
+                state.roles.forEach(role => {
+                    const avail = state.teamMembers.filter(m => m.roles.includes(role.name) && !m.unavailableDates.includes(date) && !dU.includes(m.name) && (state.settings.allowDuplicates || !dayAssign[m.name]));
+                    let shuff = [...avail].sort(() => 0.5 - Math.random());
+                    let toAssign = [];
+                    for(let i=0; i<role.count && i<shuff.length; i++) {
+                        toAssign.push(shuff[i].name);
+                        if (!state.settings.allowDuplicates) dayAssign[shuff[i].name] = true;
+                    }
+                    state.roster[date][role.name] = toAssign;
+                });
+                pushToHistory(); updateState(state);
+            };
+
+            const loadState = () => {
+                const s = localStorage.getItem('rosterAppState');
+                if(s) { state = JSON.parse(s); }
+                // Migration checks
+                if(!state.unavailability) state.unavailability = {};
+                state.teamMembers.forEach(m => { if(!m.unavailableDates) m.unavailableDates = []; });
+                state.roles = state.roles.map(r => typeof r === 'string' ? { name: r, isMultiple: false, count: 1 } : r);
+                history = [JSON.parse(JSON.stringify(state.roster))];
+                historyIndex = 0;
+            };
+
+            // --- MAIN RENDER FUNCTION ---
+            const renderAll = () => {
+                renderRosterTable();
+                renderRolesCheckboxes();
+                renderTeamMembers();
+                renderModalRolesList();
+                populateDropdowns();
+                renderUnavailableListForDate(els.dateInputMain.value);
+                document.getElementById('allow-duplicates-toggle').checked = state.settings.allowDuplicates;
+            };
+
+            const updateState = (newState) => {
+                state = newState;
+                saveState();
+                renderAll();
+            };
+
+            // --- Event Listeners ---
+            document.getElementById('add-role-form').addEventListener('submit', e => { e.preventDefault(); const v = document.getElementById('role-name-input').value.trim(); if(v && !state.roles.some(r=>r.name===v)) { state.roles.push({name:v, isMultiple:false, count:1}); document.getElementById('role-name-input').value=''; updateState(state); } });
+            document.getElementById('add-date-form').addEventListener('submit', e => { e.preventDefault(); const d = document.getElementById('date-input').value; const ev = document.getElementById('event-name-input').value.trim(); if(d && !state.dates.some(dt=>dt.date===d)) { state.dates.push({date:d, event:ev}); document.getElementById('date-input').value=''; document.getElementById('event-name-input').value=''; updateState(state); } });
+            document.getElementById('add-unavailable-form').addEventListener('submit', e => { e.preventDefault(); const d=els.dateInputMain.value; const m=els.memberSelect.value; if(d&&m) { if(!state.unavailability[d]) state.unavailability[d]=[]; if(!state.unavailability[d].includes(m)) state.unavailability[d].push(m); els.memberSelect.value=''; updateState(state); } });
+            els.dateInputMain.addEventListener('input', () => renderUnavailableListForDate(els.dateInputMain.value));
+            document.getElementById('generate-roster-button').addEventListener('click', () => { state.dates.forEach(d=>generateForDate(d.date)); });
+            document.getElementById('clear-roster-button').addEventListener('click', () => { if(confirm("Clear Roster?")) { state.roster={}; pushToHistory(); updateState(state); } });
+            document.getElementById('allow-duplicates-toggle').addEventListener('change', e => { state.settings.allowDuplicates = e.target.checked; saveState(); });
+            document.getElementById('undo-button').addEventListener('click', () => undo());
+            document.getElementById('redo-button').addEventListener('click', () => redo());
+            document.addEventListener('keydown', e => { if(e.ctrlKey){ if(e.key==='z'){e.preventDefault(); undo();} if(e.key==='y'){e.preventDefault(); redo();} } });
+            els.volunteerSelect.addEventListener('change', () => displayAssignmentsForVolunteer(els.volunteerSelect.value));
+            
+            // Modal Listeners
+            document.getElementById('team-modal-button').addEventListener('click', () => els.teamModal.showModal());
+            document.getElementById('close-modal-button').addEventListener('click', () => els.teamModal.close());
+            document.getElementById('unavailability-modal-button').addEventListener('click', () => { selectedMemberForCalendar=null; els.unavMemberSelect.value=''; calendarState.selectedDates.clear(); renderCalendar(); els.unavailabilityModal.showModal(); });
+            document.getElementById('unavailability-cancel-btn').addEventListener('click', () => els.unavailabilityModal.close());
+            document.getElementById('unavailability-save-btn').addEventListener('click', () => { if(!selectedMemberForCalendar) return; const m=state.teamMembers.find(x=>x.name===selectedMemberForCalendar); if(m){ m.unavailableDates=[...calendarState.selectedDates].sort(); updateState(state); } els.unavailabilityModal.close(); });
+            
+            els.unavMemberSelect.addEventListener('change', e => { selectedMemberForCalendar=e.target.value; calendarState.selectedDates.clear(); if(selectedMemberForCalendar){ const m=state.teamMembers.find(x=>x.name===selectedMemberForCalendar); if(m) m.unavailableDates.forEach(d=>calendarState.selectedDates.add(d)); } renderCalendar(); });
+            
+            // Calendar UI
+            document.getElementById('prev-month-btn').addEventListener('click', () => { calendarState.month--; if(calendarState.month<0){calendarState.month=11;calendarState.year--;} renderCalendar(); });
+            document.getElementById('next-month-btn').addEventListener('click', () => { calendarState.month++; if(calendarState.month>11){calendarState.month=0;calendarState.year++;} renderCalendar(); });
+            els.calGrid.addEventListener('click', e => { if(e.target.classList.contains('calendar-day')){ const d=e.target.dataset.date; if(calendarState.selectedDates.has(d)) calendarState.selectedDates.delete(d); else calendarState.selectedDates.add(d); renderCalendar(); } });
+            els.calDates.addEventListener('click', e => { const btn=e.target.closest('[data-deselect-date]'); if(btn){ calendarState.selectedDates.delete(btn.dataset.deselectDate); renderCalendar(); } });
+
+            // Table delegation
+            els.rosterTable.addEventListener('click', e => {
+                const gen = e.target.closest('[data-generate-for-date]'); if(gen) generateForDate(gen.dataset.generateForDate);
+                const del = e.target.closest('[data-date-to-delete]'); if(del) { state.dates=state.dates.filter(d=>d.date!==del.dataset.dateToDelete); delete state.roster[del.dataset.dateToDelete]; updateState(state); }
+                const delR = e.target.closest('[data-role-to-delete]'); if(delR) { const r=delR.dataset.roleToDelete; state.roles=state.roles.filter(x=>x.name!==r); Object.keys(state.roster).forEach(d=>delete state.roster[d][r]); updateState(state); }
             });
             
-            modalAddRoleForm.addEventListener('submit', (e) => {
-                 e.preventDefault();
-                 const newRoleName = modalRoleNameInput.value.trim();
-                 if (newRoleName && !state.roles.some(r => r.name === newRoleName)) {
-                    state.roles.push({ name: newRoleName, isMultiple: false, count: 1 });
-                    updateState(state);
-                    modalRoleNameInput.value = '';
-                 }
-            });
-
-            modalRolesList.addEventListener('click', (e) => {
-                const deleteBtn = e.target.closest('[data-role-to-delete]');
-                if (deleteBtn) {
-                    const roleNameToDelete = deleteBtn.dataset.roleToDelete;
-                    state.roles = state.roles.filter(r => r.name !== roleNameToDelete);
-                    state.teamMembers.forEach(m => {
-                        m.roles = m.roles.filter(rName => rName !== roleNameToDelete);
-                    });
-                    Object.keys(state.roster).forEach(date => {
-                        delete state.roster[date][roleNameToDelete];
-                    });
-                    updateState(state);
-                }
+            els.unavailableList.addEventListener('click', e => { const btn=e.target.closest('[data-remove-unavailable-name]'); if(btn){ const d=btn.dataset.removeUnavailableDate; const n=btn.dataset.removeUnavailableName; state.unavailability[d]=state.unavailability[d].filter(x=>x!==n); updateState(state); } });
+            
+            els.memberForm.addEventListener('submit', e => { e.preventDefault(); const n=document.getElementById('member-name').value.trim(); const roles=[...document.querySelectorAll('input[name="roles"]:checked')].map(c=>c.value); if(n){ 
+                if(state.editingMemberId) { const m=state.teamMembers.find(x=>x.id===state.editingMemberId); if(m){ m.name=n; m.roles=roles; m.availability=document.getElementById('member-availability').value; m.notes=document.getElementById('member-notes').value; m.unavailableDates=[...currentUnavailableDates]; } } 
+                else { if(state.teamMembers.some(x=>x.name.toLowerCase()===n.toLowerCase())) { alert('Name exists'); return; } state.teamMembers.push({id:Date.now(), name:n, roles:roles, availability:document.getElementById('member-availability').value, notes:document.getElementById('member-notes').value, unavailableDates:[...currentUnavailableDates]}); }
+                state.editingMemberId=null; els.memberForm.reset(); currentUnavailableDates=[]; document.getElementById('add-member-form').querySelector('button[type="submit"]').textContent='Add Member'; els.cancelEditBtn.classList.add('hidden'); updateState(state); 
+            }});
+            
+            els.teamList.addEventListener('click', e => {
+                const ed=e.target.closest('[data-member-id-edit]'); if(ed){ const id=parseFloat(ed.dataset.memberIdEdit); const m=state.teamMembers.find(x=>x.id===id); if(m){ state.editingMemberId=id; document.getElementById('member-name').value=m.name; document.getElementById('member-availability').value=m.availability; document.getElementById('member-notes').value=m.notes; currentUnavailableDates=[...m.unavailableDates]; renderUnavailableDatesList(); document.querySelectorAll('input[name="roles"]').forEach(c=>c.checked=m.roles.includes(c.value)); document.getElementById('add-member-form').querySelector('button[type="submit"]').textContent='Update'; els.cancelEditBtn.classList.remove('hidden'); } }
+                const del=e.target.closest('[data-member-id-delete]'); if(del){ state.teamMembers=state.teamMembers.filter(x=>x.id!==parseFloat(del.dataset.memberIdDelete)); updateState(state); }
             });
             
-            modalRolesList.addEventListener('change', (e) => {
-                const roleInput = e.target.closest('.modal-role-input');
-                const multipleToggle = e.target.closest('[data-role-multiple-toggle]');
-                const countSelect = e.target.closest('[data-role-count-select]');
+            document.getElementById('add-unavailable-date-button').addEventListener('click', () => { const d=document.getElementById('member-unavailable-date').value; if(d && !currentUnavailableDates.includes(d)) { currentUnavailableDates.push(d); renderUnavailableDatesList(); } });
+            
+            document.getElementById('unavailable-dates-list').addEventListener('click', e => { const btn=e.target.closest('[data-date-to-remove]'); if(btn){ currentUnavailableDates=currentUnavailableDates.filter(d=>d!==btn.dataset.dateToRemove); renderUnavailableDatesList(); } });
 
-                if (roleInput) {
-                    const originalRoleName = roleInput.dataset.originalRoleName;
-                    const newRoleName = roleInput.value.trim();
-                    if (newRoleName && newRoleName !== originalRoleName && !state.roles.some(r=>r.name === newRoleName)) {
-                        const role = state.roles.find(r => r.name === originalRoleName);
-                        if (role) {
-                            // Update everywhere
-                            state.teamMembers.forEach(m => {
-                                const roleIndex = m.roles.indexOf(originalRoleName);
-                                if (roleIndex > -1) m.roles[roleIndex] = newRoleName;
-                            });
-                            Object.keys(state.roster).forEach(date => {
-                                if (state.roster[date][originalRoleName]) {
-                                    state.roster[date][newRoleName] = state.roster[date][originalRoleName];
-                                    delete state.roster[date][originalRoleName];
-                                }
-                            });
-                            role.name = newRoleName;
-                            updateState(state);
-                        }
-                    } else if (!newRoleName || newRoleName !== originalRoleName) {
-                        roleInput.value = originalRoleName;
-                    }
-                }
-                if (multipleToggle) {
-                    const roleName = multipleToggle.dataset.roleMultipleToggle;
-                    const role = state.roles.find(r => r.name === roleName);
-                    if(role) {
-                        role.isMultiple = multipleToggle.checked;
-                        updateState(state);
-                    }
-                }
-                if (countSelect) {
-                    const roleName = countSelect.dataset.roleCountSelect;
-                    const role = state.roles.find(r => r.name === roleName);
-                    if (role) {
-                        role.count = parseInt(countSelect.value, 10);
-                        saveState();
-                    }
-                }
+            document.getElementById('save-session-button').addEventListener('click', () => {
+                const sessionData = JSON.stringify(state, null, 2);
+                const blob = new Blob([sessionData], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = `roster-session-${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                showNotification('Session saved successfully!');
             });
 
-            downloadTemplateButton.addEventListener('click', () => {
-                const csv = "data:text/csv;charset=utf-8," + "name,roles,availability,notes\n" + "John Doe,Main Camera;Photography,Weekends,Good with lighting";
-                const a = document.createElement("a");
-                a.href = encodeURI(csv);
-                a.download = "team_template.csv";
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            });
-
-            csvFileInput.addEventListener('change', (event) => {
-                const file = event.target.files[0];
-                if (!file) return;
+            document.getElementById('load-session-input').addEventListener('change', (event) => {
+                const file = event.target.files[0]; if (!file) return;
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const lines = e.target.result.split('\n').slice(1);
-                    let addedCount = 0;
-                    lines.forEach(line => {
-                        line = line.trim();
-                        if (line) {
-                            const [name, roles, availability, notes] = line.split(',');
-                            if (name && !state.teamMembers.some(m => m.name === name)) {
-                                const rolesArray = roles ? roles.split(';').map(r => r.trim()) : [];
-                                rolesArray.forEach(r => {
-                                    if(r && !state.roles.some(role => role.name === r)) state.roles.push({ name: r, isMultiple: false, count: 1 });
-                                });
-                                state.teamMembers.push({
-                                    id: Date.now() + Math.random(), name: name.trim(), roles: rolesArray,
-                                    availability: availability ? availability.trim() : '',
-                                    notes: notes ? notes.trim() : '',
-                                    unavailableDates: []
-                                });
-                                addedCount++;
-                            }
-                        }
-                    });
-                    if (addedCount > 0) {
-                        updateState(state);
-                        showNotification(`Successfully imported ${addedCount} new members.`);
-                    } else {
-                        showNotification('No new members were imported. They may already exist.', true);
-                    }
+                    try {
+                        const loadedState = JSON.parse(e.target.result);
+                        if (loadedState.roles && loadedState.dates && loadedState.teamMembers && loadedState.roster) {
+                            state = loadedState;
+                            if (!state.settings) state.settings = { allowDuplicates: false };
+                            state.teamMembers.forEach(m => { if (!m.unavailableDates) m.unavailableDates = []; });
+                            if (!state.unavailability) state.unavailability = {};
+                            state.roles = state.roles.map(r => typeof r === 'string' ? { name: r, isMultiple: false, count: 1 } : r);
+                            history = [JSON.parse(JSON.stringify(state.roster))]; historyIndex = 0;
+                            saveState(); renderAll(); updateUndoRedoButtons();
+                            showNotification('Session loaded successfully!');
+                        } else { throw new Error('Invalid session file format.'); }
+                    } catch (error) { showNotification('Could not load session file. It may be corrupted.', true); } finally { event.target.value = ''; }
                 };
                 reader.readAsText(file);
-                csvFileInput.value = '';
             });
 
-            const showNotification = (message, isError = false) => {
-                const notification = document.createElement('div');
-                notification.textContent = message;
-                notification.className = `p-4 rounded-lg shadow-lg text-white text-sm font-semibold transition-all duration-300 transform translate-x-full ${isError ? 'bg-red-500' : 'bg-green-500'}`;
-                notificationArea.appendChild(notification);
-                setTimeout(() => notification.classList.remove('translate-x-full'), 100);
-                setTimeout(() => {
-                    notification.classList.add('translate-x-full');
-                    notification.addEventListener('transitionend', () => notification.remove());
-                }, 3000);
-            };
-
-            downloadPdfButton.addEventListener('click', () => {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF({ orientation: 'landscape' });
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(16);
-                doc.text('Volunteer Roster', 14, 20);
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(10);
-                doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 26);
-
+            document.getElementById('download-pdf-button').addEventListener('click', () => {
+                const { jsPDF } = window.jspdf; const doc = new jsPDF({ orientation: 'landscape' });
+                doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.text('Volunteer Roster', 14, 20);
+                doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 26);
                 const sortedDates = [...state.dates].sort((a, b) => new Date(a.date) - new Date(b.date));
-                const head = [['Role', ...sortedDates.map(d => {
-                    const dateObj = new Date(d.date + 'T00:00:00');
-                    return `${dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}\n${d.event || dateObj.toLocaleDateString('en-US', { weekday: 'short' })}`;
-                })]];
-                const body = state.roles.map(role => {
-                    return [
-                        `${role.name}${role.isMultiple ? ` (${role.count})` : ''}`, 
-                        ...sortedDates.map(d => (state.roster[d.date]?.[role.name] || []).join(', '))
-                    ];
-                });
-
-                doc.autoTable({
-                    startY: 32, head: head, body: body, theme: 'grid',
-                    styles: { font: 'helvetica', fontSize: 9, cellPadding: 2 },
-                     headStyles: { fillColor: [45, 55, 72], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
-                    alternateRowStyles: { fillColor: [241, 245, 249] },
-                     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 } }
-                });
+                const head = [['Role', ...sortedDates.map(d => { const dateObj = new Date(d.date + 'T00:00:00'); return `${dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}\n${d.event || dateObj.toLocaleDateString('en-US', { weekday: 'short' })}`; })]];
+                const body = state.roles.map(role => { return [`${role.name}${role.isMultiple ? ` (${role.count})` : ''}`, ...sortedDates.map(d => (state.roster[d.date]?.[role.name] || []).join(', '))]; });
+                doc.autoTable({ startY: 32, head: head, body: body, theme: 'grid', styles: { font: 'helvetica', fontSize: 9, cellPadding: 2 }, headStyles: { fillColor: [45, 55, 72], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' }, alternateRowStyles: { fillColor: [241, 245, 249] }, columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 } } });
                 doc.save('roster.pdf');
             });
 
-            teamModal.addEventListener('click', (e) => {
-                if (e.target === teamModal) teamModal.close();
-            });
-
-            function resetMemberForm() {
-                state.editingMemberId = null;
-                addMemberForm.reset();
-                currentUnavailableDates = [];
-                renderUnavailableDatesList();
-                addMemberForm.querySelector('button[type="submit"]').textContent = 'Add Member';
-                cancelEditButton.classList.add('hidden');
-            }
-
-            // --- INITIALIZATION ---
+            // Initial Render Call
             loadState();
             renderAll();
             updateUndoRedoButtons();
