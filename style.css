@@ -1,0 +1,88 @@
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Dark Scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+            border-radius: 5px;
+            border: 2px solid #1f2937;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280;
+        }
+
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+        }
+
+        .assignment-wrapper {
+            transition: all 0.2s;
+        }
+
+        .assignment-wrapper.dragging {
+            opacity: 0.5;
+            transform: scale(0.98);
+            border: 1px dashed #6366f1;
+        }
+
+        .assignment-wrapper.drag-over {
+            background-color: #374151;
+            border-radius: 0.5rem;
+            box-shadow: 0 0 0 2px #6366f1;
+        }
+
+        .roster-cell {
+            transition: background-color 0.2s;
+        }
+
+        .roster-cell.drag-over-cell {
+            background-color: #1f2937;
+            box-shadow: inset 0 0 0 2px #818cf8;
+        }
+
+        .role-row.drag-over-row {
+            box-shadow: inset 0 2px 0 0 #818cf8;
+        }
+
+        .swapped {
+            animation: highlight 1s ease-out;
+        }
+
+        @keyframes highlight {
+            0% {
+                background-color: #312e81;
+            }
+
+            100% {
+                background-color: transparent;
+            }
+        }
+
+        /* Toggle Switch */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #6366f1;
+        }
+
+        .toggle-checkbox:checked+.toggle-label {
+            background-color: #6366f1;
+        }
+
+        /* Custom Input styling for dark mode */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+        }
